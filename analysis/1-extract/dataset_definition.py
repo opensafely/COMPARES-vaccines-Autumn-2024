@@ -14,6 +14,7 @@ from ehrql.tables.tpp import (
   sgss_covid_all_tests as covid_tests,
   emergency_care_attendances as ecds,
   apcs,
+  claim_permissions,
 )
 
 import codelists
@@ -25,6 +26,9 @@ import operator
 from functools import reduce
 def any_of(conditions):
     return reduce(operator.or_, conditions)
+
+# claim permission
+claim_permissions("occupation_on_covid_vaccine_record")
 
 #######################################################################################
 # Import action parameters
