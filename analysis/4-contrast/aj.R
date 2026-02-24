@@ -35,7 +35,7 @@ args <- commandArgs(trailingOnly=TRUE)
 
 if(length(args)==0){
   # use for interactive testing
-  df_input <- "output/3-adjust/age75plus/combine/data_weights.arrow"
+  df_input <- "output/3-adjust/age65plus/combine/data_weights.arrow"
   dir_output <- "output/4-contrast/test/"
   exposure <- c("treatment")
   subgroups <- c("all")
@@ -43,7 +43,7 @@ if(length(args)==0){
   event_date <- "covid_admitted_date"
   censoring_date <- "dereg_date" 
   competing_date <- "death_date"
-  weight <- "wt_age75plus_match_A"
+  weight <- "wt_age65plus_match_A"
   min_count <- as.integer("6")
   method <- "constant"
   max_fup <- as.numeric("168")

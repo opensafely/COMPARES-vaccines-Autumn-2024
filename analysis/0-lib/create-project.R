@@ -319,9 +319,56 @@ actions_list <- splice(
   ),
 
 
-  comment("# # # # # # # # # # # # # # # # # # #", "Cohort: age75plus", "# # # # # # # # # # # # # # # # # # #"),
+  comment("# # # # # # # # # # # # # # # # # # #", "Cohort: age65plus", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_select("age75plus"),
+  action_select("age65plus"),
+
+  comment("# # # # # # # # # # # # # # # # # # #", "Matching", "# # # # # # # # # # # # # # # # # # #"),
+
+  action_balance("age65plus", "match", "A"),
+  action_balance("age65plus", "match", "B"),
+
+  comment("# # # # # # # # # # # # # # # # # # #", "Weighting", "# # # # # # # # # # # # # # # # # # #"),
+
+  action_balance("age65plus", "weight", "A"),
+  action_balance("age65plus", "weight", "B"),
+
+  # comment("# # # # # # # # # # # # # # # # # # #", "LMW", "# # # # # # # # # # # # # # # # # # #"),
+  #
+  # action_balance("age65plus", "lmw", "A"),
+  # action_balance("age65plus", "lmw", "B"),
+
+
+  comment("# # # # # # # # # # # # # # # # # # #", "combine weights from all adjustment strategies", "# # # # # # # # # # # # # # # # # # #"),
+
+  action_combine_weights("age65plus"),
+
+  comment("# # # # # # # # # # # # # # # # # # #", "Estimate cumulative incidence curves", "# # # # # # # # # # # # # # # # # # #"),
+
+  comment("### Aalen-Johansen estimates"),
+  pmap(
+   metaparams |> filter(cohort == "age65plus"),
+    function(cohort, method, spec, subgroup, outcome, ...) {
+      action_aj_contrast(cohort, method, spec, subgroup, outcome)
+    }
+  ) |> list_flatten(),
+
+  comment("### Pooled logistic regression estimates"),
+  pmap(
+    metaparams |> filter(cohort == "age65plus"),
+    function(cohort, method, spec, subgroup, outcome, ...) {
+      action_plr_contrast(cohort, method, spec, subgroup, outcome)
+    }
+  ) |> list_flatten(),
+  comment("# # # # # # # # # # # # # # # # # # #", "Combine estimates across specs, outcomes and subgroups", "# # # # # # # # # # # # # # # # # # #"),
+
+  action_contrasts_combine(
+    "age65plus"),
+
+#cv
+  comment("# # # # # # # # # # # # # # # # # # #", "Cohort: CV", "# # # # # # # # # # # # # # # # # # #"),
+
+  action_select("cv"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "Matching", "# # # # # # # # # # # # # # # # # # #"),
 

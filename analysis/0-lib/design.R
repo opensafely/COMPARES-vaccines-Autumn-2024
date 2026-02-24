@@ -163,7 +163,7 @@ recoder <-
   lst(
     cohort = c(
       `Clinically vulnerable` = "cv",
-      `Aged 75 years or over` = "age75plus",
+      `Aged 65 years or over` = "age65plus",
       `Care home residency` = "carehome"
     ),
     subgroups = c(
@@ -425,7 +425,7 @@ local({
 
 metaparams <-
   expand_grid(
-    cohort = factor(c("age75plus", "cv")),
+    cohort = factor(c("age65plus", "cv")),
     method = factor(c("match", "weight", "lmw")),
     spec = c("A", "B", "C"),
     outcome = factor(recoder$outcome),
@@ -438,7 +438,7 @@ metaparams <-
   ) |>
   # select only some parameters to avoid too much dev work
   filter(
-    cohort == "age75plus",
+#    cohort == "age65plus",
     method != "lmw",
     subgroup  %in% c("all", "ageband"),
     spec == "A"

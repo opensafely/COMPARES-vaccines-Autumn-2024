@@ -29,7 +29,7 @@ args <- commandArgs(trailingOnly=TRUE)
 
 if(length(args)==0){
   # use for interactive testing
-  cohort <- "age75plus"
+  cohort <- "ag65plus"
 
 } else {
   cohort <- args[[1]]
