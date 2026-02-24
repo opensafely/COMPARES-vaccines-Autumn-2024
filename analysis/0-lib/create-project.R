@@ -372,29 +372,29 @@ actions_list <- splice(
 
   comment("# # # # # # # # # # # # # # # # # # #", "Matching", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_balance("age75plus", "match", "A"),
-  action_balance("age75plus", "match", "B"),
+  action_balance("cv", "match", "A"),
+  action_balance("cv", "match", "B"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "Weighting", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_balance("age75plus", "weight", "A"),
-  action_balance("age75plus", "weight", "B"),
+  action_balance("cv", "weight", "A"),
+  action_balance("cv", "weight", "B"),
 
   # comment("# # # # # # # # # # # # # # # # # # #", "LMW", "# # # # # # # # # # # # # # # # # # #"),
   #
-  # action_balance("age75plus", "lmw", "A"),
-  # action_balance("age75plus", "lmw", "B"),
+  # action_balance("cv", "lmw", "A"),
+  # action_balance("cv", "lmw", "B"),
 
 
   comment("# # # # # # # # # # # # # # # # # # #", "combine weights from all adjustment strategies", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_combine_weights("age75plus"),
+  action_combine_weights("cv"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "Estimate cumulative incidence curves", "# # # # # # # # # # # # # # # # # # #"),
 
   comment("### Aalen-Johansen estimates"),
   pmap(
-    metaparams,
+    metaparams |> filter(cohort == "cv"),
     function(cohort, method, spec, subgroup, outcome, ...) {
       action_aj_contrast(cohort, method, spec, subgroup, outcome)
     }
@@ -402,7 +402,7 @@ actions_list <- splice(
 
   comment("### Pooled logistic regression estimates"),
   pmap(
-    metaparams,
+    metaparams |> filter(cohort == "cv"),
     function(cohort, method, spec, subgroup, outcome, ...) {
       action_plr_contrast(cohort, method, spec, subgroup, outcome)
     }
@@ -411,9 +411,7 @@ actions_list <- splice(
   comment("# # # # # # # # # # # # # # # # # # #", "Combine estimates across specs, outcomes and subgroups", "# # # # # # # # # # # # # # # # # # #"),
 
   action_contrasts_combine(
-    "age75plus"
-  ),
-
+    "cv"),
   comment("# # # # # # # # # # # # # # # # # # #", "End", "# # # # # # # # # # # # # # # # # # #")
 
 )
