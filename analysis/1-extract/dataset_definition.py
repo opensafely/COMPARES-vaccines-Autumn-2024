@@ -1,7 +1,7 @@
 
 from pathlib import Path
 
-from ehrql import Dataset, case, days, years, when, minimum_of
+from ehrql import Dataset, case, days, years, when, minimum_of, claim_permissions
 from ehrql.tables.tpp import (
   patients, 
   practice_registrations, 
@@ -14,7 +14,6 @@ from ehrql.tables.tpp import (
   sgss_covid_all_tests as covid_tests,
   emergency_care_attendances as ecds,
   apcs,
-  claim_permissions,
 )
 
 import codelists
