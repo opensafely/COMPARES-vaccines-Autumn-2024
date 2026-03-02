@@ -263,7 +263,6 @@ action_contrasts_combine <- function(
 
 
 ## full list of all balance actions for a given cohort, balance method ----
-# DO NOT USE - the "argument" argument returns numerics instead of name when doing this for some reason, so it doesn't work.
 actions_balance <- function(cohort, method) {
 
   cohort0 <- cohort
@@ -272,19 +271,16 @@ actions_balance <- function(cohort, method) {
   metaparams |>
     filter(cohort == cohort0, method == method0) |>
     distinct(cohort, method, spec) |>
-    pmap(
-      function(cohort, method, spec, ...) {
-        action_balance(cohort, method, spec)
-      }
-    ) |>
+    mutate(across(where(is.factor), as.character)) |> # required because for some reason the factor is stripped and numerics are returned when passed to pmap
+    pmap(action_balance) |>
     list_flatten()
 }
+
 
 ## full list of all model actions for a given  cohort, estimation method ----
 actions_contrasts <- function(cohort, estimator) {
 
   cohort0 <- cohort
-
   if (estimator == "aj") {
     estimator_action <- action_aj_contrast
   }
@@ -294,11 +290,9 @@ actions_contrasts <- function(cohort, estimator) {
 
   metaparams |>
     filter(cohort == cohort0) |>
-    pmap(
-      function(cohort, method, spec, subgroup, outcome, ...) {
-        estimator_action(cohort, method, spec, subgroup, outcome)
-      }
-    ) |>
+    select(cohort, method, spec, subgroup, outcome) |>
+    mutate(across(where(is.factor), as.character)) |>
+    pmap(estimator_action) |>
     list_flatten()
 }
 
@@ -369,14 +363,11 @@ actions_list <- splice(
 
   comment("# # # # # # # # # # # # # # # # # # #", "Matching", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_balance("age65plus", "match", "A"),
-  # action_balance("age65plus", "match", "B"),
+  actions_balance("age65plus", "match"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "Weighting", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_balance("age65plus", "weight", "A"),
-  # action_balance("age65plus", "weight", "B"),
-
+  actions_balance("age65plus", "weight"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "combine weights from all adjustment strategies", "# # # # # # # # # # # # # # # # # # #"),
 
@@ -405,13 +396,11 @@ actions_list <- splice(
 
   comment("# # # # # # # # # # # # # # # # # # #", "Matching", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_balance("cv", "match", "A"),
-  # action_balance("cv", "match", "B"),
+  actions_balance("cv", "match"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "Weighting", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_balance("cv", "weight", "A"),
-  # action_balance("cv", "weight", "B"),
+  actions_balance("cv", "weight"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "combine weights from all adjustment strategies", "# # # # # # # # # # # # # # # # # # #"),
 
