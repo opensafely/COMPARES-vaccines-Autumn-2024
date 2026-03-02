@@ -71,24 +71,6 @@ actions:
         csv: output/3-adjust/age65plus/match-A/report/*.csv
         png: output/3-adjust/age65plus/match-A/report/*.png
 
-  adjust_age65plus_match_B:
-    run: r:v2 analysis/3-adjust/balance.R age65plus match B
-    needs:
-    - select_age65plus
-    outputs:
-      highly_sensitive:
-        arrow: output/3-adjust/age65plus/match-B/*.arrow
-
-  adjust_age65plus_match_B_report:
-    run: r:v2 analysis/3-adjust/report.R age65plus match B
-    needs:
-    - select_age65plus
-    - adjust_age65plus_match_B
-    outputs:
-      moderately_sensitive:
-        csv: output/3-adjust/age65plus/match-B/report/*.csv
-        png: output/3-adjust/age65plus/match-B/report/*.png
-
   ## # # # # # # # # # # # # # # # # # # # 
   ## Weighting 
   ## # # # # # # # # # # # # # # # # # # # 
@@ -110,24 +92,6 @@ actions:
       moderately_sensitive:
         csv: output/3-adjust/age65plus/weight-A/report/*.csv
         png: output/3-adjust/age65plus/weight-A/report/*.png
-
-  adjust_age65plus_weight_B:
-    run: r:v2 analysis/3-adjust/balance.R age65plus weight B
-    needs:
-    - select_age65plus
-    outputs:
-      highly_sensitive:
-        arrow: output/3-adjust/age65plus/weight-B/*.arrow
-
-  adjust_age65plus_weight_B_report:
-    run: r:v2 analysis/3-adjust/report.R age65plus weight B
-    needs:
-    - select_age65plus
-    - adjust_age65plus_weight_B
-    outputs:
-      moderately_sensitive:
-        csv: output/3-adjust/age65plus/weight-B/report/*.csv
-        png: output/3-adjust/age65plus/weight-B/report/*.png
 
   ## # # # # # # # # # # # # # # # # # # # 
   ## combine weights from all adjustment strategies 
@@ -778,24 +742,6 @@ actions:
         csv: output/3-adjust/cv/match-A/report/*.csv
         png: output/3-adjust/cv/match-A/report/*.png
 
-  adjust_cv_match_B:
-    run: r:v2 analysis/3-adjust/balance.R cv match B
-    needs:
-    - select_cv
-    outputs:
-      highly_sensitive:
-        arrow: output/3-adjust/cv/match-B/*.arrow
-
-  adjust_cv_match_B_report:
-    run: r:v2 analysis/3-adjust/report.R cv match B
-    needs:
-    - select_cv
-    - adjust_cv_match_B
-    outputs:
-      moderately_sensitive:
-        csv: output/3-adjust/cv/match-B/report/*.csv
-        png: output/3-adjust/cv/match-B/report/*.png
-
   ## # # # # # # # # # # # # # # # # # # # 
   ## Weighting 
   ## # # # # # # # # # # # # # # # # # # # 
@@ -817,24 +763,6 @@ actions:
       moderately_sensitive:
         csv: output/3-adjust/cv/weight-A/report/*.csv
         png: output/3-adjust/cv/weight-A/report/*.png
-
-  adjust_cv_weight_B:
-    run: r:v2 analysis/3-adjust/balance.R cv weight B
-    needs:
-    - select_cv
-    outputs:
-      highly_sensitive:
-        arrow: output/3-adjust/cv/weight-B/*.arrow
-
-  adjust_cv_weight_B_report:
-    run: r:v2 analysis/3-adjust/report.R cv weight B
-    needs:
-    - select_cv
-    - adjust_cv_weight_B
-    outputs:
-      moderately_sensitive:
-        csv: output/3-adjust/cv/weight-B/report/*.csv
-        png: output/3-adjust/cv/weight-B/report/*.png
 
   ## # # # # # # # # # # # # # # # # # # # 
   ## combine weights from all adjustment strategies 
