@@ -260,6 +260,28 @@ action_contrasts_combine <- function(
   )
 }
 
+## full list of all model actions for a given  cohort, estimation method ----
+actions_contrasts <- function(cohort, estimator) {
+
+  cohort0 <- cohort
+
+  if (estimator == "aj") {
+    estimator_action <- action_aj_contrast
+  }
+  if (estimator == "plr") {
+    estimator_action <- action_plr_contrast
+  }
+
+  pmap(
+    metaparams |> filter(cohort == cohort0),
+    function(cohort, method, spec, subgroup, outcome, ...) {
+      estimator_action(cohort, method, spec, subgroup, outcome)
+    }
+  ) |> list_flatten()
+}
+
+
+
 # specify project ----
 
 ## defaults ----
@@ -333,11 +355,6 @@ actions_list <- splice(
   action_balance("age65plus", "weight", "A"),
   action_balance("age65plus", "weight", "B"),
 
-  # comment("# # # # # # # # # # # # # # # # # # #", "LMW", "# # # # # # # # # # # # # # # # # # #"),
-  #
-  # action_balance("age65plus", "lmw", "A"),
-  # action_balance("age65plus", "lmw", "B"),
-
 
   comment("# # # # # # # # # # # # # # # # # # #", "combine weights from all adjustment strategies", "# # # # # # # # # # # # # # # # # # #"),
 
@@ -346,26 +363,20 @@ actions_list <- splice(
   comment("# # # # # # # # # # # # # # # # # # #", "Estimate cumulative incidence curves", "# # # # # # # # # # # # # # # # # # #"),
 
   comment("### Aalen-Johansen estimates"),
-  pmap(
-   metaparams |> filter(cohort == "age65plus"),
-    function(cohort, method, spec, subgroup, outcome, ...) {
-      action_aj_contrast(cohort, method, spec, subgroup, outcome)
-    }
-  ) |> list_flatten(),
+
+  actions_contrasts("age65plus", "aj"),
 
   comment("### Pooled logistic regression estimates"),
-  pmap(
-    metaparams |> filter(cohort == "age65plus"),
-    function(cohort, method, spec, subgroup, outcome, ...) {
-      action_plr_contrast(cohort, method, spec, subgroup, outcome)
-    }
-  ) |> list_flatten(),
+
+  actions_contrasts("age65plus", "plr"),
+
+
   comment("# # # # # # # # # # # # # # # # # # #", "Combine estimates across specs, outcomes and subgroups", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_contrasts_combine(
-    "age65plus"),
+  action_contrasts_combine("age65plus"),
 
-#cv
+
+
   comment("# # # # # # # # # # # # # # # # # # #", "Cohort: CV", "# # # # # # # # # # # # # # # # # # #"),
 
   action_select("cv"),
@@ -380,12 +391,6 @@ actions_list <- splice(
   action_balance("cv", "weight", "A"),
   action_balance("cv", "weight", "B"),
 
-  # comment("# # # # # # # # # # # # # # # # # # #", "LMW", "# # # # # # # # # # # # # # # # # # #"),
-  #
-  # action_balance("cv", "lmw", "A"),
-  # action_balance("cv", "lmw", "B"),
-
-
   comment("# # # # # # # # # # # # # # # # # # #", "combine weights from all adjustment strategies", "# # # # # # # # # # # # # # # # # # #"),
 
   action_combine_weights("cv"),
@@ -393,25 +398,17 @@ actions_list <- splice(
   comment("# # # # # # # # # # # # # # # # # # #", "Estimate cumulative incidence curves", "# # # # # # # # # # # # # # # # # # #"),
 
   comment("### Aalen-Johansen estimates"),
-  pmap(
-    metaparams |> filter(cohort == "cv"),
-    function(cohort, method, spec, subgroup, outcome, ...) {
-      action_aj_contrast(cohort, method, spec, subgroup, outcome)
-    }
-  ) |> list_flatten(),
+
+  actions_contrasts("cv", "aj"),
 
   comment("### Pooled logistic regression estimates"),
-  pmap(
-    metaparams |> filter(cohort == "cv"),
-    function(cohort, method, spec, subgroup, outcome, ...) {
-      action_plr_contrast(cohort, method, spec, subgroup, outcome)
-    }
-  ) |> list_flatten(),
+
+  actions_contrasts("cv", "plr"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "Combine estimates across specs, outcomes and subgroups", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_contrasts_combine(
-    "cv"),
+  action_contrasts_combine("cv"),
+
   comment("# # # # # # # # # # # # # # # # # # #", "End", "# # # # # # # # # # # # # # # # # # #")
 
 )
