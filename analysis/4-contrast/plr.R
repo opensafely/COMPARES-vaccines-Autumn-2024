@@ -168,26 +168,35 @@ subgroup_models <-
     model = map(
       .x = data,
       .f = function(plrdata) {
-        model <- glm(
+        tryCatch(
+        glm(
           formula_time_treatment,
           family = binomial(),
-          weight = weight,
+          weights = weight,
           data = plrdata,
           model = TRUE, # this needs to be true for vcovCL to work as needed - shame because it takes up a lot of memory
           x = FALSE,
           y = FALSE
+        ),
+          error = function(e) {
+            cat("glm error:", conditionMessage(e), "\n")
+            NULL
+          }
         )
       }
     ),
+    
     estimates = map2(
       .x = data,
       .y = model,
       .f = function(plrdata, model) {
+        converged <- isTRUE(model$converged)
+        tryCatch(
+          {
         # sandwich::vcovCL doesn't handle formulae properly! hence inclusion of "model=TRUE" above - be careful
         vcov <- vcovCL(x = model, cluster = plrdata$patient_id, type = "HC0") # or use `marginaleffects::get_vcov(model, vcov = ~patient_id)`
 
-        newdata <-
-          expand_grid(
+            newdata <- expand_grid(
             treatment =  c(0L, 1L),
             time = c(0, seq_len(maxfup))
           ) %>%
@@ -216,6 +225,14 @@ subgroup_models <-
             # rmst.se = sqrt(((2* cumsum(time*surv)) - (rmst^2))/n.risk), # this only works if one row per day using fill_times! otherwise need sqrt(((2* cumsum(time*interval*surv)) - (rmst^2))/n.risk)
             # rmst.low = rmst + (qnorm(0.025) * rmst.se),
             # rmst.high = rmst + (qnorm(0.975) * rmst.se),
+                
+                converged = converged,
+              )
+          },
+          error = function(e) {
+            cat("estimates error:", conditionMessage(e), "\n")
+            tibble()         
+          }
           )
       }
     )
