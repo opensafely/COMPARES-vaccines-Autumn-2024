@@ -135,11 +135,11 @@ data_event_counts <-
         data_all %>%
           mutate(
             subgroup_level = .[[subgroup]],
-            wt = ifelse(
-              method != "unadjusted",
-              data_all[[paste("wt", cohort, method, spec, sep = "_")]],
+            wt = if (method != "unadjusted") {
+              data_all[[paste("wt", cohort, method, spec, sep = "_")]]
+            } else {
               rep(1, nrow(data_all))
-            ),
+            },
             treatment_date = vax_date - 1L,
 
             event_date = as.Date(data_all[[paste0(outcome, "_date")]]),
