@@ -70,6 +70,21 @@ fs::dir_create(output_dir)
 # only needed if rerunning weighting model
 # data_cohort <- read_feather(here("output", "2-select", cohort, "data_cohort.arrow"))
 
+##import data event counts to define which models can be fitted
+data_event_counts <- read_feather(here_glue("output", "3-adjust", cohort, "combine", "table_event_counts.arrow")) 
+subgroups_events_both_treatments <-
+  data_event_counts |>
+  filter(
+    cohort == !!cohort,
+    method == !!method,
+    spec == !!spec,
+    outcome == !!outcome,
+    subgroup == !!subgroup,
+    flag_subgroups_both_treatments_with_events
+  ) |>
+  distinct(subgroup_level) |>
+  pull(subgroup_level)
+
 ## import weights from matching or weighting method ----
 data_weights <- read_feather(here_glue("output", "3-adjust", cohort, "combine", "data_weights.arrow"))
 # data_weights <- read_feather(here_glue("output", "3-adjust", cohort, "{method}-{spec}", "data_adjusted.arrow"))
@@ -146,6 +161,7 @@ data_persontime <-
 
 subgroup_models <-
   data_persontime |>
+  filter(.data[[subgroup]] %in% subgroups_events_both_treatments)|>
   group_by(!!subgroup_sym) |>
   nest() |>
   mutate(
