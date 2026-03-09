@@ -172,6 +172,12 @@ data_event_counts <-
       }
     )
   ) |>
-  unnest(data)
+  unnest(data) |>
+  group_by(cohort, method, spec, outcome, subgroup, subgroup_level) |>
+  mutate(
+    flag_subgroups_with_events_both_treatments = all(count >= 1),
+    flag_subgroups_with_events_only_1treatment = any(count >= 1) & any(count < 1)
+  ) |>
+  ungroup()
 
 write_feather(data_event_counts, fs::path(output_dir, "table_event_counts.arrow"))
