@@ -177,7 +177,7 @@ data_event_counts <-
   mutate(
     flag_subgroups_both_treatments_with_events = all(count >= 1),
     flag_subgroups_only1treatment_with_events = any(count >= 1) & any(count < 1)
-only  ) |>
+  ) |>
   ungroup()
 
 write_feather(data_event_counts, fs::path(output_dir, "table_event_counts.arrow"))
