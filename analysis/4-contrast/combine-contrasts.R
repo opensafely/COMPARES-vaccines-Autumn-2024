@@ -35,11 +35,10 @@ if(length(args)==0){
   cohort <- args[[1]]
 }
 
-cohort0 <- cohort
 
 metaparams <-
   metaparams |>
-  filter(cohort == cohort0)
+  filter(cohort == !!cohort)
 
 output_dir <- here("output", "4-contrast", cohort, "contrasts")
 
@@ -54,10 +53,10 @@ combine_model_outputs <- function(type, strategy, split){
       data = pmap(
         .l = .,
         function(cohort, method, spec, subgroup, outcome, ...) {
-          
-          subgroup0 <- as.character(subgroup)
-          
-          dat <- 
+
+          subgroup_chr <- as.character(subgroup)
+
+          dat <-
             here("output", "4-contrast", cohort, glue("{method}-{spec}"), subgroup, outcome, strategy, glue("{type}.arrow")) |>
             read_feather() |>
             ungroup() %>%
@@ -119,13 +118,10 @@ metaparams |>
 
 plot_contrasts <- function(data_contrasts, timeslice, method, spec, estimate, estimate.ll, estimate.ul, name){
   
-  cohort0 <- cohort
-  method0 <- method
-  spec0 <- spec
   
   plot_temp <-
     data_contrasts |>
-    filter(cohort0==cohort, method0==method, spec0==spec, time==timeslice) |> 
+    filter(cohort == !!cohort, method == !!method, spec == !!spec, time == timeslice) |>
     group_by(outcome_descr) |>
     ggplot(aes(y=subgroup_level_descr)) +
     geom_vline(aes(xintercept=0), linetype="dotted", colour="darkgrey")+

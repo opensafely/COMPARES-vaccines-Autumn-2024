@@ -41,10 +41,9 @@ fs::dir_create(output_dir)
 data_cohort <- read_feather(here("output", "2-select", cohort, "data_cohort.arrow"))
 
 ## create dataset of metaparameters to import
-cohort0 <- cohort
 
 # make sure we only use configuration for selected cohort
-metaparams_filtered <- metaparams |> filter(cohort == cohort0)
+metaparams_filtered <- metaparams |> filter(cohort == !!cohort)
 
 metaparams_cohort_method_spec <-
   metaparams_filtered |>

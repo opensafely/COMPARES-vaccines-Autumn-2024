@@ -145,7 +145,7 @@ action_balance <- function(cohort, method, spec) {
 
 
 action_combine_weights <- function(cohort) {
-  cohort0 <- cohort
+
   action(
     name = glue("adjust_combine_{cohort}"),
     run = glue("r:v2 analysis/3-adjust/combine-weights.R {cohort}"),
@@ -154,7 +154,7 @@ action_combine_weights <- function(cohort) {
       glue_data(
         .x = metaparams_cohort_method_spec |>
           select(cohort, method, spec) |>
-          filter(cohort == cohort0),
+          filter(cohort == !!cohort),
         "adjust_{cohort}_{method}_{spec}"
       )
     ) |> list_c(),
@@ -265,11 +265,8 @@ action_contrasts_combine <- function(
 ## full list of all balance actions for a given cohort, balance method ----
 actions_balance <- function(cohort, method) {
 
-  cohort0 <- cohort
-  method0 <- method
-
   metaparams |>
-    filter(cohort == cohort0, method == method0) |>
+    filter(cohort == !!cohort, method == !!method) |>
     distinct(cohort, method, spec) |>
     mutate(across(where(is.factor), as.character)) |> # required because for some reason the factor is stripped and numerics are returned when passed to pmap
     pmap(action_balance) |>
@@ -280,7 +277,6 @@ actions_balance <- function(cohort, method) {
 ## full list of all model actions for a given  cohort, estimation method ----
 actions_contrasts <- function(cohort, estimator) {
 
-  cohort0 <- cohort
   if (estimator == "aj") {
     estimator_action <- action_aj_contrast
   }
@@ -289,7 +285,7 @@ actions_contrasts <- function(cohort, estimator) {
   }
 
   metaparams |>
-    filter(cohort == cohort0) |>
+    filter(cohort == !!cohort) |>
     select(cohort, method, spec, subgroup, outcome) |>
     mutate(across(where(is.factor), as.character)) |>
     pmap(estimator_action) |>
