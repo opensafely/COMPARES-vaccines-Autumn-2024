@@ -1,4 +1,5 @@
 # # # # # # # # # # # # # # # # # # # # #
+
 # Purpose: collate all scripts to create testing environment for M-estimation
 # # # # # # # # # # # # # # # # # # # # #
 
@@ -29,11 +30,11 @@ args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
   # use for interactive testing
   removeobjects <- FALSE
-  cohort <- "age75plus"
+  cohort <- "cv"
   method <- "match"
   spec <- "A"
-  subgroup <- "all"
-  outcome <- "covid_admitted"
+  subgroup <- "ageband"
+  outcome <- "covid_death"
 } else {
 
   removeobjects <- TRUE
@@ -69,6 +70,21 @@ fs::dir_create(output_dir)
 ## import unadjusted cohort data ----
 # only needed if rerunning weighting model
 # data_cohort <- read_feather(here("output", "2-select", cohort, "data_cohort.arrow"))
+
+## import data event counts to define which models can be fitted
+data_event_counts <- read_feather(here_glue("output", "3-adjust", cohort, "combine", "table_event_counts.arrow"))
+subgroups_both_treatments_with_events <-
+  data_event_counts |>
+  filter(
+    cohort == !!cohort,
+    method == !!method,
+    spec == !!spec,
+    outcome == !!outcome,
+    subgroup == !!subgroup,
+    flag_subgroups_both_treatments_with_events
+  ) |>
+  distinct(subgroup_level) |>
+  pull(subgroup_level)
 
 ## import weights from matching or weighting method ----
 data_weights <- read_feather(here_glue("output", "3-adjust", cohort, "combine", "data_weights.arrow"))
@@ -136,71 +152,104 @@ formula_time_treatment <- event_indicator ~ treatment + ns(time, 4) + treatment:
 
 data_persontime <-
   data_all  |>
-  uncount(event_time, .remove = FALSE) %>% # may change this from event_time to final censoring time in case we want keep dead people under follow up
+  uncount(event_time, .remove = FALSE) |> # may change this from event_time to final censoring time in case we want keep dead people under follow up
   mutate(
     time = sequence(rle(patient_id)$lengths), # equivalent-ish to group_by(patient_id) |> mutate(row_number())
     event_indicator = (time == event_time) & (event_indicator == TRUE)
   )
 
-# estimate time-specific incidence from using pooled logistic regression ----
+# create dataset to link estimates onto
+estimates_scaffold <- expand_grid(
+  treatment =  c(0L, 1L),
+  time = c(0, seq_len(maxfup))
+)
 
+# estimate time-specific incidence from using pooled logistic regression ----
+# Subgroup models ------------------
 subgroup_models <-
   data_persontime |>
-  group_by(!!subgroup_sym) |>
+  # filter(.data[[subgroup]] %in% subgroups_both_treatments_with_events) |>
+  mutate(run_model = .data[[subgroup]] %in% subgroups_both_treatments_with_events) |>
+  group_by(!!subgroup_sym, run_model) |>
   nest() |>
   mutate(
-    model = map(
+    model = map2(
       .x = data,
-      .f = function(plrdata) {
-        model <- glm(
-          formula_time_treatment,
-          family = binomial(),
-          weight = weight,
-          data = plrdata,
-          model = TRUE, # this needs to be true for vcovCL to work as needed - shame because it takes up a lot of memory
-          x = FALSE,
-          y = FALSE
+      .y = run_model,
+      .f = function(plrdata, run_model) {
+        tryCatch(
+          if (run_model) {
+            glm(
+              formula_time_treatment,
+              family = binomial(),
+              weights = weight,
+              data = plrdata,
+              model = TRUE, # this needs to be true for vcovCL to work as needed - shame because it takes up a lot of memory
+              x = FALSE,
+              y = FALSE
+            )
+          } else {
+            stop("Not enough events")
+          },
+          error = function(e) {
+            cat("glm error:", conditionMessage(e), "\n")
+            NULL
+          }
         )
       }
     ),
+
+    model_status = map2_chr(run_model, model, \(.x, .y){
+      if (!.x) {
+        "Model not run"
+      } else if (.x & !.y$converged) {
+        "Model not converged"
+      } else if (.x & .y$converged) {
+        "Model converged"
+      }
+    }),
+
     estimates = map2(
       .x = data,
       .y = model,
       .f = function(plrdata, model) {
-        # sandwich::vcovCL doesn't handle formulae properly! hence inclusion of "model=TRUE" above - be careful
-        vcov <- vcovCL(x = model, cluster = plrdata$patient_id, type = "HC0") # or use `marginaleffects::get_vcov(model, vcov = ~patient_id)`
 
-        newdata <-
-          expand_grid(
-            treatment =  c(0L, 1L),
-            time = c(0, seq_len(maxfup))
-          ) %>%
-          mutate(
-            # this uses the ipw.model to get the estimated incidence at each time point for each treatment, assuming the entire population received treatment A
-            # it works correctly for the ATE because of the weights (ie as if setting treatment=1 or treatment=0 for entire population)
-            inc = predict(model, newdata = ., type = "response"),
-            inc.se = predict(model, newdata = ., type = "response", se.fit = TRUE)$se.fit, # this does not use vcov from vcovCL, so not cluster-robust
-            inc.logit.se = predict.glm.custom.vcov(model, vcov = vcov, newdata = .)$se.fit, # cluster robust, but on the linear scale, not response scale
-            inc.low = plogis(qlogis(inc) + (qnorm(0.025) * inc.logit.se)),
-            inc.high = plogis(qlogis(inc) + (qnorm(0.975) * inc.logit.se)),
-          ) |>
-          group_by(treatment) %>%
-          mutate(
-            dummy_id_weight = 1L,
-            surv = cumprod(1 - inc),
-            surv.se = sqrt(cmlinc_variance(model = model, vcov = vcov, newdata = tibble(treatment = treatment, time = time), id = dummy_id_weight, time = time, weights = dummy_id_weight)),
-            surv.low = surv + (qnorm(0.025) * surv.se),
-            surv.high = surv + (qnorm(0.975) * surv.se),
+        if (!is.null(model)) {
+          # sandwich::vcovCL doesn't handle formulae properly! hence inclusion of "model=TRUE" above - be careful
+          vcov <- vcovCL(x = model, cluster = plrdata$patient_id, type = "HC0") # or use `marginaleffects::get_vcov(model, vcov = ~patient_id)`
 
-            cmlinc = 1 - surv,
-            cmlinc.se = surv.se,
-            cmlinc.low = 1 - surv.high,
-            cmlinc.high = 1 - surv.low,
-            # rmst = cumsum(surv),
-            # rmst.se = sqrt(((2* cumsum(time*surv)) - (rmst^2))/n.risk), # this only works if one row per day using fill_times! otherwise need sqrt(((2* cumsum(time*interval*surv)) - (rmst^2))/n.risk)
-            # rmst.low = rmst + (qnorm(0.025) * rmst.se),
-            # rmst.high = rmst + (qnorm(0.975) * rmst.se),
-          )
+          estimates_scaffold %>%
+            mutate(
+              # this uses the ipw.model to get the estimated incidence at each time point for each treatment, assuming the entire population received treatment A
+              # it works correctly for the ATE because of the weights (ie as if setting treatment=1 or treatment=0 for entire population)
+              inc = predict(model, newdata = ., type = "response"),
+              inc.se = predict(model, newdata = ., type = "response", se.fit = TRUE)$se.fit, # this does not use vcov from vcovCL, so not cluster-robust
+              inc.logit.se = predict.glm.custom.vcov(model, vcov = vcov, newdata = .)$se.fit, # cluster robust, but on the linear scale, not response scale
+              inc.low = plogis(qlogis(inc) + (qnorm(0.025) * inc.logit.se)),
+              inc.high = plogis(qlogis(inc) + (qnorm(0.975) * inc.logit.se)),
+            ) |>
+            group_by(treatment) %>%
+            mutate(
+              dummy_id_weight = 1L,
+              surv = cumprod(1 - inc),
+              surv.se = sqrt(cmlinc_variance(model = model, vcov = vcov, newdata = tibble(treatment = treatment, time = time), id = dummy_id_weight, time = time, weights = dummy_id_weight)),
+              surv.low = surv + (qnorm(0.025) * surv.se),
+              surv.high = surv + (qnorm(0.975) * surv.se),
+
+              cmlinc = 1 - surv,
+              cmlinc.se = surv.se,
+              cmlinc.low = 1 - surv.high,
+              cmlinc.high = 1 - surv.low,
+              # rmst = cumsum(surv),
+              # rmst.se = sqrt(((2* cumsum(time*surv)) - (rmst^2))/n.risk), # this only works if one row per day using fill_times! otherwise need sqrt(((2* cumsum(time*interval*surv)) - (rmst^2))/n.risk)
+              # rmst.low = rmst + (qnorm(0.025) * rmst.se),
+              # rmst.high = rmst + (qnorm(0.975) * rmst.se),
+
+            ) |> select(-dummy_id_weight)
+
+        } else {
+          estimates_scaffold
+        }
       }
     )
   ) |>
@@ -209,7 +258,8 @@ subgroup_models <-
 
 data_estimates <-
   subgroup_models |>
-  unnest(cols = estimates)
+  unnest(cols = c(estimates, model_status))
+
 
 ## output estimates to disk ----
 arrow::write_feather(data_estimates, fs::path(output_dir, glue("estimates.arrow")))

@@ -145,7 +145,7 @@ action_balance <- function(cohort, method, spec) {
 
 
 action_combine_weights <- function(cohort) {
-  cohort0 <- cohort
+
   action(
     name = glue("adjust_combine_{cohort}"),
     run = glue("r:v2 analysis/3-adjust/combine-weights.R {cohort}"),
@@ -154,7 +154,7 @@ action_combine_weights <- function(cohort) {
       glue_data(
         .x = metaparams_cohort_method_spec |>
           select(cohort, method, spec) |>
-          filter(cohort == cohort0),
+          filter(cohort == !!cohort),
         "adjust_{cohort}_{method}_{spec}"
       )
     ) |> list_c(),
@@ -260,6 +260,40 @@ action_contrasts_combine <- function(
   )
 }
 
+
+
+## full list of all balance actions for a given cohort, balance method ----
+actions_balance <- function(cohort, method) {
+
+  metaparams |>
+    filter(cohort == !!cohort, method == !!method) |>
+    distinct(cohort, method, spec) |>
+    mutate(across(where(is.factor), as.character)) |> # required because for some reason the factor is stripped and numerics are returned when passed to pmap
+    pmap(action_balance) |>
+    list_flatten()
+}
+
+
+## full list of all model actions for a given  cohort, estimation method ----
+actions_contrasts <- function(cohort, estimator) {
+
+  if (estimator == "aj") {
+    estimator_action <- action_aj_contrast
+  }
+  if (estimator == "plr") {
+    estimator_action <- action_plr_contrast
+  }
+
+  metaparams |>
+    filter(cohort == !!cohort) |>
+    select(cohort, method, spec, subgroup, outcome) |>
+    mutate(across(where(is.factor), as.character)) |>
+    pmap(estimator_action) |>
+    list_flatten()
+}
+
+
+
 # specify project ----
 
 ## defaults ----
@@ -319,53 +353,68 @@ actions_list <- splice(
   ),
 
 
-  comment("# # # # # # # # # # # # # # # # # # #", "Cohort: age75plus", "# # # # # # # # # # # # # # # # # # #"),
+  comment("# # # # # # # # # # # # # # # # # # #", "Cohort: age65plus", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_select("age75plus"),
+  action_select("age65plus"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "Matching", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_balance("age75plus", "match", "A"),
-  action_balance("age75plus", "match", "B"),
+  actions_balance("age65plus", "match"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "Weighting", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_balance("age75plus", "weight", "A"),
-  action_balance("age75plus", "weight", "B"),
-
-  # comment("# # # # # # # # # # # # # # # # # # #", "LMW", "# # # # # # # # # # # # # # # # # # #"),
-  #
-  # action_balance("age75plus", "lmw", "A"),
-  # action_balance("age75plus", "lmw", "B"),
-
+  actions_balance("age65plus", "weight"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "combine weights from all adjustment strategies", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_combine_weights("age75plus"),
+  action_combine_weights("age65plus"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "Estimate cumulative incidence curves", "# # # # # # # # # # # # # # # # # # #"),
 
   comment("### Aalen-Johansen estimates"),
-  pmap(
-    metaparams,
-    function(cohort, method, spec, subgroup, outcome, ...) {
-      action_aj_contrast(cohort, method, spec, subgroup, outcome)
-    }
-  ) |> list_flatten(),
+
+  actions_contrasts("age65plus", "aj"),
 
   comment("### Pooled logistic regression estimates"),
-  pmap(
-    metaparams,
-    function(cohort, method, spec, subgroup, outcome, ...) {
-      action_plr_contrast(cohort, method, spec, subgroup, outcome)
-    }
-  ) |> list_flatten(),
+
+  actions_contrasts("age65plus", "plr"),
+
 
   comment("# # # # # # # # # # # # # # # # # # #", "Combine estimates across specs, outcomes and subgroups", "# # # # # # # # # # # # # # # # # # #"),
 
-  action_contrasts_combine(
-    "age75plus"
-  ),
+  action_contrasts_combine("age65plus"),
+
+
+
+  comment("# # # # # # # # # # # # # # # # # # #", "Cohort: CV", "# # # # # # # # # # # # # # # # # # #"),
+
+  action_select("cv"),
+
+  comment("# # # # # # # # # # # # # # # # # # #", "Matching", "# # # # # # # # # # # # # # # # # # #"),
+
+  actions_balance("cv", "match"),
+
+  comment("# # # # # # # # # # # # # # # # # # #", "Weighting", "# # # # # # # # # # # # # # # # # # #"),
+
+  actions_balance("cv", "weight"),
+
+  comment("# # # # # # # # # # # # # # # # # # #", "combine weights from all adjustment strategies", "# # # # # # # # # # # # # # # # # # #"),
+
+  action_combine_weights("cv"),
+
+  comment("# # # # # # # # # # # # # # # # # # #", "Estimate cumulative incidence curves", "# # # # # # # # # # # # # # # # # # #"),
+
+  comment("### Aalen-Johansen estimates"),
+
+  actions_contrasts("cv", "aj"),
+
+  comment("### Pooled logistic regression estimates"),
+
+  actions_contrasts("cv", "plr"),
+
+  comment("# # # # # # # # # # # # # # # # # # #", "Combine estimates across specs, outcomes and subgroups", "# # # # # # # # # # # # # # # # # # #"),
+
+  action_contrasts_combine("cv"),
 
   comment("# # # # # # # # # # # # # # # # # # #", "End", "# # # # # # # # # # # # # # # # # # #")
 

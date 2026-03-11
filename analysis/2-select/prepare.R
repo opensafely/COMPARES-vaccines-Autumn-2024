@@ -148,7 +148,7 @@ data_prepared <-
     
 
     # define cohorts
-    age75plus = age_eligible >= 75,
+    age65plus = age_eligible >= 65,
     #cv = cv,
     is_eligible = age_eligible | cv,
 

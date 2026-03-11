@@ -1,7 +1,7 @@
 
 from pathlib import Path
 
-from ehrql import Dataset, case, days, years, when, minimum_of
+from ehrql import Dataset, case, days, years, when, minimum_of, claim_permissions
 from ehrql.tables.tpp import (
   patients, 
   practice_registrations, 
@@ -25,6 +25,9 @@ import operator
 from functools import reduce
 def any_of(conditions):
     return reduce(operator.or_, conditions)
+
+# claim permission
+claim_permissions("occupation_on_covid_vaccine_record")
 
 #######################################################################################
 # Import action parameters

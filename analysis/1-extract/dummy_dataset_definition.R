@@ -4,7 +4,7 @@ library("here")
 library("glue")
 
 
-remotes::install_github("https://github.com/wjchulme/dd4d")
+# remotes::install_github("https://github.com/wjchulme/dd4d")
 library("dd4d")
 
 
