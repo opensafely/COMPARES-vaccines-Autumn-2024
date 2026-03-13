@@ -636,5 +636,5 @@ ukhsa_skin_infections = codelist_from_csv(
 
 potentially_vaccine_related = ["860816004", "863907000", "449671007"]
 
-cellulitis = [x for x in ukhsa_skin_infections if x not in set(potentially_vaccine_related)]
+cellulitis = set(ukhsa_skin_infections) - set(potentially_vaccine_related)
 
