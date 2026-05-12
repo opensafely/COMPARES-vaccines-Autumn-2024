@@ -477,7 +477,7 @@ other_ae_snomed = codelist_from_csv(
     column="code",
 )
 other_ae_icd10 = codelist_from_csv(
-    "codelists/user-elsie_horne-other_arterial_embolism_icd10.csv",
+    "codelists/opensafely-other-arterial-embolism-icd10.csv", 
     column="code",
 )
 
@@ -513,7 +513,7 @@ icvt_snomed = codelist_from_csv(
     "codelists/user-elsie_horne-dvt_icvt_snomed.csv",    
     column="code",
 )
-icvt_nonpreg_icd10_codelist = expand_three_char_icd10_codes(
+icvt_nonpreg_icd10 = expand_three_char_icd10_codes(
     codelist_from_csv(
     "codelists/user-elsie_horne-dvt_icvt_icd10.csv",   
     column="code",
