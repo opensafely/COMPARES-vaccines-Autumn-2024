@@ -1,6 +1,9 @@
 from ehrql import codelist_from_csv
 
-
+# expand codes in SUS which are 3 characters to have X at the end
+# from Em Prestige: https://github.com/opensafely/disparities-comparison
+def expand_three_char_icd10_codes(codelist):
+    return codelist + [f"{code}X" for code in codelist if len(code) == 3]
 
 
 
@@ -18,7 +21,7 @@ covid_icd10 = codelist_from_csv(
 
 # overwrite imported codelist to add additional "Multisystem inflammatory syndrome associated with COVID-19, unspecified" code
 # see "Note on coding of the coronavirus (COVID-19)" here: https://www.ons.gov.uk/peoplepopulationandcommunity/birthsdeathsandmarriages/deaths/methodologies/userguidetomortalitystatisticsjuly2017
-covid_icd10 = ["U071", "U072", "U109"]
+covid_icd10 = ["U071", "U072", "U109", "U075"]
 
 # covid_emergency = codelist_from_csv(
 #     "codelists-opensafely-covid-19-ae-diagnosis-codes.csv",
@@ -461,9 +464,11 @@ stroke_isch_snomed = codelist_from_csv(
     "codelists/user-elsie_horne-stroke_isch_snomed.csv",
     column="code",
 )
-stroke_isch_icd10 = codelist_from_csv(
+stroke_isch_icd10 = expand_three_char_icd10_codes( 
+    codelist_from_csv(
     "codelists/user-RochelleKnight-stroke_isch_icd10.csv",  
     column="code",
+    )
 )
 
 ## Other arterial embolism (AE) [contributes to composite ATE only]
@@ -508,10 +513,13 @@ icvt_snomed = codelist_from_csv(
     "codelists/user-elsie_horne-dvt_icvt_snomed.csv",    
     column="code",
 )
-icvt_nonpreg_icd10 = codelist_from_csv(
+icvt_nonpreg_icd10_codelist = expand_three_char_icd10_codes(
+    codelist_from_csv(
     "codelists/user-elsie_horne-dvt_icvt_icd10.csv",   
     column="code",
+    )
 )
+
 icvt_preg_icd10 = codelist_from_csv(
     "codelists/user-elsie_horne-icvt_pregnancy_icd10.csv",  
     column="code",
@@ -539,13 +547,11 @@ pe_icd10 = codelist_from_csv(
 )
 
 ## Portal vein thrombosis (PVT) [contributes to composite VTE only]
-pvt_snomed = codelist_from_csv(
+pvt_snomed = expand_three_char_icd10_codes(
+    codelist_from_csv(
     "codelists/user-tomsrenin-pvt.csv",   
     column="code",
-)
-pvt_icd10 = codelist_from_csv(
-    "codelists/user-elsie_horne-portal_vein_thrombosis_icd10.csv",  
-    column="code",
+    )
 )
 
 ## Composite venous thrombotic event (VTE)
