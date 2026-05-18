@@ -547,9 +547,14 @@ pe_icd10 = codelist_from_csv(
 )
 
 ## Portal vein thrombosis (PVT) [contributes to composite VTE only]
-pvt_snomed = expand_three_char_icd10_codes(
-    codelist_from_csv(
+pvt_snomed = codelist_from_csv(
     "codelists/user-tomsrenin-pvt.csv",   
+    column="code",
+)
+
+pvt_icd10 = expand_three_char_icd10_codes(
+    codelist_from_csv(
+    "codelists/user-elsie_horne-portal_vein_thrombosis_icd10.csv",   
     column="code",
     )
 )
