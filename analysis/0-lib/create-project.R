@@ -103,6 +103,7 @@ action_select <- function(cohort) {
     ),
     moderately_sensitive = lst(
       csv = glue("output/2-select/{cohort}/*.csv"),
+      png = glue("output/2-select/{cohort}/*.png"),
     )
   )
 }

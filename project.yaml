@@ -48,6 +48,7 @@ actions:
         arrow: output/2-select/age65plus/*.arrow
       moderately_sensitive:
         csv: output/2-select/age65plus/*.csv
+        png: output/2-select/age65plus/*.png
 
   ## # # # # # # # # # # # # # # # # # # # 
   ## Matching 
@@ -719,6 +720,7 @@ actions:
         arrow: output/2-select/cv/*.arrow
       moderately_sensitive:
         csv: output/2-select/cv/*.csv
+        png: output/2-select/cv/*.png
 
   ## # # # # # # # # # # # # # # # # # # # 
   ## Matching 

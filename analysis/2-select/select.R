@@ -253,3 +253,197 @@ write_csv(total_n_rounded, fs::path(output_dir, "total_rounded.csv"))
 
 ## remove large in-memory objects
 remove(data_inclusioncriteria)
+
+##############################################
+# Flu coadministration
+##############################################
+
+## Flu coadministration timing by vaccine product --------------------------
+
+# Create a long table with one row per patient and flu vaccination timing window
+flu_coadmin_days <-
+  data_cohort |>
+  select(
+    patient_id,
+    vax_product,
+    flu_vaccine_before_30_days,
+    flu_vaccine_same_day_days,
+    flu_vaccine_after_30_days
+  ) |>
+  pivot_longer(
+    cols = starts_with("flu_vaccine_"),
+    names_to = "flu_window",
+    values_to = "days"
+  ) |>
+  filter(!is.na(days))
+
+# Count flu coadministration events by COVID-19 vaccine product and day
+# difference, applying SDC rounding.
+flu_coadmin_days_by_vaccine <-
+  flu_coadmin_days |>
+  group_by(vax_product, days) |>
+  summarise(
+    n_roundmid6 = roundmid_any(n(), sdc.limit),
+    .groups = "drop"
+  ) |>
+  arrange(vax_product, days)
+
+# Count flu coadministration events across all COVID-19 vaccine products.
+flu_coadmin_days_general <-
+  flu_coadmin_days |>
+  group_by(days) |>
+  summarise(
+    vax_product = "All vaccines",
+    n_roundmid6 = roundmid_any(n(), sdc.limit),
+    .groups = "drop"
+  ) |>
+  arrange(days)
+
+# Combine product-specific counts with the overall count.
+flu_coadmin_days_table <-
+  bind_rows(
+    flu_coadmin_days_general,
+    flu_coadmin_days_by_vaccine
+  )
+write_csv(flu_coadmin_days_table, fs::path(output_dir, "flu_coadmin_days_table.csv"))
+
+# Plot the distribution of days between COVID-19 and flu vaccination.
+flu_coadmin_days_plot <- ggplot(flu_coadmin_days_table, aes(x = days, y = n_roundmid6)) +
+  geom_col() +
+  facet_wrap(~ vax_product, ncol = 1, scales = "free_y") +
+  labs(
+    x = "Days between COVID-19 and flu vaccination",
+    y = "Number of patients",
+    title = "Flu co-vaccination timing"
+  ) +
+  theme_minimal()
+flu_coadmin_days_plot
+
+ggsave(filename = fs::path(output_dir, glue("flu_coadmin_days_plot.png")), 
+       flu_coadmin_days_plot, 
+       width = 20, 
+       height = 20, 
+       units = "cm")
+
+## Flu coadministration by subgroup ----------------------------------------
+
+# Create a long-format subgroup table.
+# Each patient contributes one row per subgroup variable.
+# flu_coadmin is classified hierarchically as:
+#   - same_day
+#   - 7_days
+#   - no_covax
+
+flu_coadmin_subgroups <- data_cohort |>
+  select(
+    patient_id,
+    ethnicity5,
+    ethnicity16,
+    sex,
+    ageband,
+    imd_Q5,
+    vax_product,
+    flu_coadmin_7_day,
+    flu_coadmin_same_day
+  ) |>
+  mutate(
+    flu_coadmin = case_when(
+      flu_coadmin_same_day ~ "same_day",
+      !flu_coadmin_same_day & flu_coadmin_7_day ~ "7_days",
+      !flu_coadmin_same_day & !flu_coadmin_7_day ~ "no_covax",
+      TRUE ~ NA_character_
+    )
+  ) |>
+  pivot_longer(
+    cols = c(ethnicity5, ethnicity16, sex, imd_Q5, ageband),
+    names_to = "group",
+    values_to = "category",
+    values_transform = list(category = as.character)
+  )
+
+# Count patients by vaccine product, subgroup, subgroup category,
+# and flu coadministration category.
+counts_by_vaccine <- flu_coadmin_subgroups |>
+  count(
+    vax_product,
+    group,
+    category,
+    flu_coadmin,
+    name = "n_roundmid6"
+  )
+
+# Count patients across all vaccine products
+counts_all_products <- flu_coadmin_subgroups |>
+  count(
+    group,
+    category,
+    flu_coadmin,
+    name = "n_roundmid6"
+  ) |>
+  mutate(vax_product = "All products") |>
+  select(
+    vax_product,
+    group,
+    category,
+    flu_coadmin,
+    n_roundmid6
+  )
+
+# Combine product-specific and overall counts.
+# Percentages describe the distribution of flu coadministration status
+# within each subgroup category.
+flu_coadmin_subgroups_table <-
+  bind_rows(
+    counts_by_vaccine,
+    counts_all_products
+  )  |>
+  group_by(vax_product, group, category) |>
+  mutate(
+    total_roundmid6 = roundmid_any(sum(n_roundmid6), sdc.limit),
+    n_roundmid6 = roundmid_any(n_roundmid6, sdc.limit),
+    pct_roundmid6 = round(n_roundmid6 / total_roundmid6 * 100, 1)
+  ) |>
+  ungroup()|>
+  mutate(
+    flu_coadmin = factor(
+      flu_coadmin,
+      levels = c("same_day", "7_days", "no_covax")
+    ),
+    group = factor(
+      group,
+      levels = c("ageband", "sex", "ethnicity5", "ethnicity16", "imd_Q5")
+    )
+  )
+
+write_csv(flu_coadmin_subgroups_table, fs::path(output_dir, "flu_coadmin_subgroups_table.csv"))
+# Plot the percentage of patients in each flu coadministration category,
+# by subgroup category and vaccine product.
+ 
+flu_coadmin_subgroups_plot <- ggplot(flu_coadmin_subgroups_table, aes(
+    x = pct_roundmid6,
+    y = category,
+    colour = flu_coadmin
+  )) +
+  geom_point(size = 2) +
+  facet_grid(
+    rows = vars(group),
+    cols = vars(vax_product),
+    scales = "free_y",
+    space = "free_y"
+  ) +
+  labs(
+    x = "%",
+    y = NULL,
+    colour = "Flu coadministration"
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    strip.text.y = element_text(angle = 0)
+  )
+
+ggsave(filename = fs::path(output_dir, glue("flu_coadmin_subgroups_plot.png")), 
+       flu_coadmin_subgroups_plot, 
+       width = 20, 
+       height = 20, 
+       units = "cm")
