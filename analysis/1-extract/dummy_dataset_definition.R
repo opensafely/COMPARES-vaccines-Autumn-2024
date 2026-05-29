@@ -161,6 +161,23 @@ sim_list <- lst(
     ~ (!is.na(vax_covid_prior_1_day) + !is.na(vax_covid_prior_2_day) + !is.na(vax_covid_prior_3_day)) + if_else(!is.na(vax_covid_prior_3_day), rpois(n = ..n, 3), 0L)
   ),
 
+  ## Flu covax
+# flu vaccines
+  flu_vaccine_before_30_day = bn_node(
+    ~ as.integer(vax_day - runif(n = ..n, 1, 30)),
+    missing_rate = ~0.8,
+    needs = "vax_day"),
+
+  flu_vaccine_after_30_day = bn_node(
+   ~ as.integer(vax_day + runif(n = ..n, 1, 30)),
+   missing_rate = ~0.8,
+    needs = "vax_day"),
+
+  flu_vaccine_same_day = bn_node(
+    ~ as.integer(vax_day),
+    missing_rate = ~0.8,
+    needs = "vax_day"),
+
   ## occupation / residency
   hscworker = bn_node(
     ~ rbernoulli(n = ..n, p = 0.01)
