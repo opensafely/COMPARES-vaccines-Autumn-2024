@@ -83,7 +83,7 @@ data_prepared <-
       .default = FALSE
     ),
     
-    flu_coadmin_30_day = !is.na(flu_vaccine_after_30_days) | !is.na(flu_vaccine_same_date) | !is.na(flu_vaccine_before_30_days)
+    flu_coadmin_30_day = !is.na(flu_vaccine_after_30_days) | !is.na(flu_vaccine_same_date) | !is.na(flu_vaccine_before_30_days),
 
     # all subgroup dummy variable
     all = factor("all"),
