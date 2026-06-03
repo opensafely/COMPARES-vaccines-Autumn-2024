@@ -349,8 +349,8 @@ flu_coadmin_subgroups <- data_cohort |>
   mutate(
     flu_coadmin = case_when(
       flu_coadmin_same_day ~ "same_day",
-      !flu_coadmin_same_day & flu_coadmin_7_day ~ "7_days",
-      !flu_coadmin_same_day & !flu_coadmin_7_day ~ "no_covax",
+      flu_coadmin_7_day ~ "7_days",
+      !flu_coadmin_7_day ~ "no_covax",
       TRUE ~ NA_character_
     )
   ) |>

@@ -74,10 +74,7 @@ data_prepared <-
     flu_vaccine_after_30_days = as.integer(flu_vaccine_after_30_date - vax_date),
     flu_vaccine_same_day_days = as.integer(flu_vaccine_same_date - vax_date),
     
-    flu_coadmin_same_day = case_when(
-      !is.na(flu_vaccine_same_date) ~ TRUE,
-      .default = FALSE
-    ),
+    flu_coadmin_same_day = !is.na(flu_vaccine_same_date),
     
     flu_coadmin_7_day = case_when(
       flu_vaccine_after_30_days < 8 ~ TRUE,
@@ -86,12 +83,7 @@ data_prepared <-
       .default = FALSE
     ),
     
-    flu_coadmin_30_day = case_when(
-      !is.na(flu_vaccine_after_30_days) ~ TRUE,
-      !is.na(flu_vaccine_before_30_days) ~ TRUE,
-      !is.na(flu_vaccine_same_date) ~ TRUE,
-      .default = FALSE
-    ),
+    flu_coadmin_30_day = !is.na(flu_vaccine_after_30_days) | !is.na(flu_vaccine_same_date) | !is.na(flu_vaccine_before_30_days)
 
     # all subgroup dummy variable
     all = factor("all"),
