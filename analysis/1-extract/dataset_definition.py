@@ -227,6 +227,55 @@ dataset.inhospital = (
 # TODO: add all relevant variables
 # eg housebound, end-of-life, carehome residency, etc
 
+#######################################################################################
+# Flu co-vax
+#######################################################################################
+
+# Flu vaccinations
+flu_vaccinations = (
+    vaccinations
+    .where(vaccinations.target_disease.is_in(["INFLUENZA"]))
+    .sort_by(vaccinations.date)
+)
+
+# closest flu vaccination within 30 days before
+flu_vaccination_before_30 = (
+    flu_vaccinations
+    .where(
+        flu_vaccinations.date.is_on_or_between(
+            vax_date - days(30),
+            vax_date - days(1),
+        )
+    )
+    .last_for_patient()
+)
+
+dataset.flu_vaccine_before_30_date = flu_vaccination_before_30.date
+
+
+# closest flu vaccination within 30 days after
+flu_vaccination_after_30 = (
+    flu_vaccinations
+    .where(
+        flu_vaccinations.date.is_on_or_between(
+            vax_date + days(1),
+            vax_date + days(30),
+        )
+    )
+    .first_for_patient()
+)
+
+dataset.flu_vaccine_after_30_date = flu_vaccination_after_30.date
+
+
+# flu vaccination on the same day
+flu_vaccination_same_day = (
+    flu_vaccinations
+    .where(flu_vaccinations.date == vax_date)
+    .first_for_patient()
+)
+
+dataset.flu_vaccine_same_date = flu_vaccination_same_day.date
 
 
 #######################################################################################
