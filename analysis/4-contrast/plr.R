@@ -158,6 +158,19 @@ data_persontime <-
     event_indicator = (time == event_time) & (event_indicator == TRUE)
   )
 
+# improved pooled logistic: keep only times at which at least one event occurred
+# source: https://github.com/pzivich/publications-code/tree/master/ImprovedPooledLogit
+
+unique_event_times <-
+  data_persontime |>
+  filter(event_indicator) |>
+  pull(time) |>
+  unique()
+
+data_persontime_improved <-
+  data_persontime |>
+  filter(time %in% unique_event_times)
+
 # create dataset to link estimates onto
 estimates_scaffold <- expand_grid(
   treatment =  c(0L, 1L),
@@ -167,7 +180,8 @@ estimates_scaffold <- expand_grid(
 # estimate time-specific incidence from using pooled logistic regression ----
 # Subgroup models ------------------
 subgroup_models <-
-  data_persontime |>
+  # data_persontime |>
+  data_persontime_improved |> # improved pooled logistic: keep only times at which at least one event occurred
   # filter(.data[[subgroup]] %in% subgroups_both_treatments_with_events) |>
   mutate(run_model = .data[[subgroup]] %in% subgroups_both_treatments_with_events) |>
   group_by(!!subgroup_sym, run_model) |>
