@@ -166,7 +166,7 @@ data_event_counts <-
           summarise(
             n = roundmid_any(sum(wt), sdc.limit),
             persontime = sum(wt * as.numeric(censor_date - (vax_date - 1))),
-            count = sum(wt * event_indicator)
+            weighted_event_count = sum(wt * event_indicator)
           )
       }
     )
@@ -174,8 +174,10 @@ data_event_counts <-
   unnest(data) |>
   group_by(cohort, method, spec, outcome, subgroup, subgroup_level) |>
   mutate(
-    flag_subgroups_both_treatments_with_events = all(count >= 1),
-    flag_subgroups_only1treatment_with_events = any(count >= 1) & any(count < 1)
+    flag_subgroups_both_treatments_with_events = all(weighted_event_count >= 1),
+    flag_subgroups_only1treatment_with_events = any(weighted_event_count >= 1) & any(weighted_event_count < 1),
+    flag_subgroups_both_treatments_with_min_events = all(weighted_event_count > sdc.limit),
+    flag_subgroups_only1treatment_with_min_events = any(weighted_event_count > sdc.limit) & any(weighted_event_count <= sdc.limit),
   ) |>
   ungroup()
 

@@ -26,7 +26,6 @@ source(here("analysis", "0-lib", "design.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 
-
 if (length(args) == 0) {
   # use for interactive testing
   removeobjects <- FALSE
@@ -73,7 +72,8 @@ fs::dir_create(output_dir)
 
 ## import data event counts to define which models can be fitted
 data_event_counts <- read_feather(here_glue("output", "3-adjust", cohort, "combine", "table_event_counts.arrow"))
-subgroups_both_treatments_with_events <-
+
+subgroups_both_treatments_with_min_events <-
   data_event_counts |>
   filter(
     cohort == !!cohort,
@@ -81,7 +81,7 @@ subgroups_both_treatments_with_events <-
     spec == !!spec,
     outcome == !!outcome,
     subgroup == !!subgroup,
-    flag_subgroups_both_treatments_with_events
+    flag_subgroups_both_treatments_with_min_events
   ) |>
   distinct(subgroup_level) |>
   pull(subgroup_level)
@@ -168,8 +168,7 @@ estimates_scaffold <- expand_grid(
 # Subgroup models ------------------
 subgroup_models <-
   data_persontime |>
-  # filter(.data[[subgroup]] %in% subgroups_both_treatments_with_events) |>
-  mutate(run_model = .data[[subgroup]] %in% subgroups_both_treatments_with_events) |>
+  mutate(run_model = .data[[subgroup]] %in% subgroups_both_treatments_with_min_events) |>
   group_by(!!subgroup_sym, run_model) |>
   nest() |>
   mutate(
@@ -217,14 +216,14 @@ subgroup_models <-
         if (!is.null(model)) {
           # sandwich::vcovCL doesn't handle formulae properly! hence inclusion of "model=TRUE" above - be careful
           vcov <- vcovCL(x = model, cluster = plrdata$patient_id, type = "HC0") # or use `marginaleffects::get_vcov(model, vcov = ~patient_id)`
-
+          
           estimates_scaffold %>%
             mutate(
               # this uses the ipw.model to get the estimated incidence at each time point for each treatment, assuming the entire population received treatment A
               # it works correctly for the ATE because of the weights (ie as if setting treatment=1 or treatment=0 for entire population)
-              inc = predict(model, newdata = ., type = "response"),
-              inc.se = predict(model, newdata = ., type = "response", se.fit = TRUE)$se.fit, # this does not use vcov from vcovCL, so not cluster-robust
-              inc.logit.se = predict.glm.custom.vcov(model, vcov = vcov, newdata = .)$se.fit, # cluster robust, but on the linear scale, not response scale
+              inc = predict(model, newdata = estimates_scaffold, type = "response"),
+              inc.se = predict(model, newdata = estimates_scaffold, type = "response", se.fit = TRUE)$se.fit, # this does not use vcov from vcovCL, so not cluster-robust
+              inc.logit.se = predict.glm.custom.vcov(model, vcov = vcov, newdata = estimates_scaffold)$se.fit, # cluster robust, but on the linear scale, not response scale
               inc.low = plogis(qlogis(inc) + (qnorm(0.025) * inc.logit.se)),
               inc.high = plogis(qlogis(inc) + (qnorm(0.975) * inc.logit.se)),
             ) |>
@@ -258,7 +257,9 @@ subgroup_models <-
 
 data_estimates <-
   subgroup_models |>
-  unnest(cols = c(estimates, model_status))
+  unnest(cols = c(estimates, model_status)) |>
+  # add NA columns if they don't already exist
+  bind_rows(tibble(cmlinc=numeric(), cmlinc.se=numeric(), cmlinc.low=numeric(), cmlinc.high=numeric()))
 
 
 ## output estimates to disk ----
@@ -269,7 +270,7 @@ write_csv(data_estimates, fs::path(output_dir, glue("estimates.csv")))
 
 # could do this within `subgroup_models` step above but bring out to avoid overloading high memory stuff
 data_contrasts <-
-  # see following link for canonical-ish place where these are defined https://github.com/opensafely-actions/kaplan-meier-function/blob/main/analysis/km.R#L540
+  
   data_estimates |>
   group_by(!!subgroup_sym) |>
   pivot_wider(
@@ -280,7 +281,9 @@ data_contrasts <-
     )
   ) |>
   mutate(
-
+    # see following link for canonical-ish place where these are defined:
+    # https://github.com/opensafely-actions/kaplan-meier-function/blob/main/analysis/km.R#L540
+    
     # survival ratio, standard error, and confidence limits
     sr = (1 - cmlinc_1) / (1 - cmlinc_0),
     sr.ln.se = (cmlinc.se_0 / (1 - cmlinc_0)) + (cmlinc.se_1 / (1 - cmlinc_1)),
