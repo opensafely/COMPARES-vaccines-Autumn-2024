@@ -299,7 +299,7 @@ actions_contrasts <- function(cohort, estimator) {
 
 ## defaults ----
 defaults_list <- lst(
-  version = "3.0",
+  version = "5.0",
   expectations = lst(population_size = 1000L)
 )
 
