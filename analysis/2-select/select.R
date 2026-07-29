@@ -122,15 +122,35 @@ data_criteria <-
     isnot_inhospital = !inhospital,
     
     include = (
-      prior_vax_interval_atleast12weeks & vax_product_of_interest & #no_prior_productA & no_prior_productB &
+      prior_vax_interval_atleast12weeks &
+        vax_product_of_interest &
+        codamin_flu &
+        # no_prior_productA &
+        # no_prior_productB &
         prior_vax_1plus &
-        has_age & has_sex & has_imd & has_region & #has_ethnicity &
-        #isnot_hscworker &
-        #isnot_endoflife &
-        #has_norecentcovid &
+        has_age &
+        has_sex &
+        has_imd &
+        has_region &
+        # has_ethnicity5 &
+        # isnot_hscworker &
+        # isnot_endoflife &
+        # has_norecentcovid &
         isnot_inhospital
     ),
+    
+    include_before_flu = (
+      prior_vax_interval_atleast12weeks &
+        vax_product_of_interest &
+        prior_vax_1plus &
+        has_age &
+        has_sex &
+        has_imd &
+        has_region &
+        isnot_inhospital
+    )
   )
+
 
 data_cohort <- 
   data_criteria |>
