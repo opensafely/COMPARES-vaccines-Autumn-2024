@@ -303,13 +303,13 @@ flu_coadmin_days <-
   select(patient_id) |>
   left_join(
     data_prepared |>
-  select(
-    patient_id,
-    vax_product,
-    flu_vaccine_before_30_days,
-    flu_vaccine_same_day_days,
-    flu_vaccine_after_30_days
-      ),
+      select(
+        patient_id,
+        vax_product,
+        flu_vaccine_before_30_days,
+        flu_vaccine_same_day_days,
+        flu_vaccine_after_30_days
+       ),
     by = "patient_id"
   ) |>
   pivot_longer(
@@ -382,16 +382,16 @@ flu_coadmin_subgroups <-
   select(patient_id) |>
   left_join(
     data_prepared |>
-  select(
-    patient_id,
-    ethnicity5,
-    ethnicity16,
-    sex,
-    ageband,
-    imd_Q5,
-    vax_product,
-    flu_coadmin_7_day,
-    flu_coadmin_same_day
+      select(
+        patient_id,
+        ethnicity5,
+        ethnicity16,
+        sex,
+        ageband,
+        imd_Q5,
+        vax_product,
+        flu_coadmin_7_day,
+        flu_coadmin_same_day
       ),
     by = "patient_id"
   ) |>
@@ -467,12 +467,11 @@ flu_coadmin_subgroups_table <-
 write_csv(flu_coadmin_subgroups_table, fs::path(output_dir, "flu_coadmin_subgroups_table.csv"))
 # Plot the percentage of patients in each flu coadministration category,
 # by subgroup category and vaccine product.
- 
 flu_coadmin_subgroups_plot <- ggplot(flu_coadmin_subgroups_table, aes(
-    x = pct_roundmid6,
-    y = category,
-    colour = flu_coadmin
-  )) +
+  x = pct_roundmid6,
+  y = category,
+  colour = flu_coadmin
+)) +
   geom_point(size = 2) +
   facet_grid(
     rows = vars(group),
