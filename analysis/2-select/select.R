@@ -297,13 +297,19 @@ remove(data_inclusioncriteria)
 
 # Create a long table with one row per patient and flu vaccination timing window
 flu_coadmin_days <-
-  data_cohort |>
+  data_criteria |>
+  filter(include_before_flu) |>
+  select(patient_id) |>
+  left_join(
+    data_prepared |>
   select(
     patient_id,
     vax_product,
     flu_vaccine_before_30_days,
     flu_vaccine_same_day_days,
     flu_vaccine_after_30_days
+      ),
+    by = "patient_id"
   ) |>
   pivot_longer(
     cols = starts_with("flu_vaccine_"),
@@ -369,7 +375,12 @@ ggsave(filename = fs::path(output_dir, glue("flu_coadmin_days_plot.png")),
 #   - 7_days
 #   - no_covax
 
-flu_coadmin_subgroups <- data_cohort |>
+flu_coadmin_subgroups <-
+  data_criteria |>
+  filter(include_before_flu) |>
+  select(patient_id) |>
+  left_join(
+    data_prepared |>
   select(
     patient_id,
     ethnicity5,
@@ -380,6 +391,8 @@ flu_coadmin_subgroups <- data_cohort |>
     vax_product,
     flu_coadmin_7_day,
     flu_coadmin_same_day
+      ),
+    by = "patient_id"
   ) |>
   mutate(
     flu_coadmin = case_when(
