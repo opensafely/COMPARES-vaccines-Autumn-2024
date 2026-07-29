@@ -218,7 +218,7 @@ create_flowchart <- function(round_level = 1){
     filter(c1) |>
     group_by(vax_product) |>
     summarise(
-      across(.cols=everything(), .fns=~ceiling_any(sum(.), round_level))
+      across(.cols=everything(), .fns=~ceiling_any(sum(., na.rm = TRUE), round_level))
     ) |>
     pivot_longer(
       cols=-c(vax_product),
