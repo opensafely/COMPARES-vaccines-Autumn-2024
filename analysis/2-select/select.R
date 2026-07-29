@@ -61,8 +61,20 @@ data_prepared <- read_feather(here("output", "2-select", "data_prepared.arrow"))
 ## unrounded totals
 total_n_unrounded <-
   bind_rows(
-    tibble(vax_product="any", n=nrow(data_prepared)),
-    count(data_prepared |> mutate(boost_type=fct_other(vax_product, keep=treatment_lookup$treatment, other_level="other")), vax_product, .drop=FALSE)
+    tibble(
+      vax_product="any", 
+      n=nrow(data_prepared)
+      ),
+    count(
+      data_prepared |> 
+        mutate(
+          boost_type=fct_other(
+            vax_product, 
+            keep=treatment_lookup$treatment, 
+            other_level="other")
+          ), 
+      vax_product, 
+      .drop=FALSE)
   ) |>
   mutate(
     pct = n/first(n)
@@ -90,22 +102,23 @@ data_criteria <-
     patient_id,
     vax_date,
     vax_product,
+    prior_vax_interval_atleast12weeks,
+    vax_product_of_interest = vax_product %in% c(productA, productB),
+    codamin_flu = !is.na(flu_vaccine_same_date),
+    # no_prior_productA = !vaxhist_productA,
+    # no_prior_productB = !vaxhist_productB,
+    prior_vax_1plus = prior_vax_count >= 1,
     has_age = !is.na(age_eligible),
     has_sex = !is.na(sex) & !(sex %in% c("intersex", "unknown")),
     has_imd = !is.na(imd_Q5),
-    has_ethnicity5 = !is.na(ethnicity5),
     has_region = !is.na(region),
-    #has_msoa = !is.na(msoa),
-    #isnot_hscworker = !hscworker,
-    #isnot_carehomeresident = !care_home_combined,
-    #isnot_endoflife = !endoflife,
-    #isnot_housebound = !housebound,
-    #no_prior_productA = !vaxhist_productA,
-    #no_prior_productB = !vaxhist_productB,
-    prior_vax_interval_atleast12weeks,
-    vax_product_of_interest = vax_product %in% c(productA, productB),
-    prior_vax_1plus = (prior_vax_count >= 1),
-    #has_norecentcovid = ((vax_date - anycovid_0_date) >= 28) | is.na(anycovid_0_date),
+    # has_ethnicity5 = !is.na(ethnicity5),
+    # has_msoa = !is.na(msoa),
+    # isnot_hscworker = !hscworker,
+    # isnot_carehomeresident = !care_home_combined,
+    # isnot_endoflife = !endoflife,
+    # isnot_housebound = !housebound,
+    # has_norecentcovid = ((vax_date - anycovid_0_date) >= 28) | is.na(anycovid_0_date),
     isnot_inhospital = !inhospital,
     
     include = (
