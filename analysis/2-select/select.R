@@ -180,6 +180,7 @@ table_cohort <-
 
 write_csv(table_cohort, fs::path(output_dir, "table_cohort.csv"))
 
+remove(data_cohort)
 
 ## output simple dataset containing exclusions criteria met ----
 
@@ -202,7 +203,7 @@ data_inclusioncriteria <- data_criteria |>
   ) 
 
 # remove large in-memory objects
-remove(data_criteria)
+# remove(data_criteria)
 
 write_feather(data_inclusioncriteria, sink = fs::path(output_dir, "data_inclusioncriteria.arrow"))
 
