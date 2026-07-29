@@ -191,9 +191,10 @@ data_inclusioncriteria <- data_criteria |>
     vax_product,
     c0 = TRUE,
     c1 = c0 & vax_product_of_interest,
-    c2 = c1 & prior_vax_interval_atleast12weeks, #& no_prior_productA & no_prior_productB,
-    c3 = c2 & prior_vax_1plus,
-    c4_1 = c3 & (has_age & has_sex & has_imd & has_region),
+    c2 = c1 & codamin_flu,
+    c3 = c2 & prior_vax_interval_atleast12weeks, #& no_prior_productA & no_prior_productB,
+    c4 = c3 & prior_vax_1plus,
+    c5_1 = c4 & (has_age & has_sex & has_imd & has_region)
     # c4_3 = c3 & (isnot_endoflife),
     # c4_4 = c3 & (has_norecentcovid),
     # c4_5 = c3 & (isnot_inhospital),
@@ -239,14 +240,15 @@ create_flowchart <- function(round_level = 1){
       crit = criteria,
       criteria = fct_case_when(
         crit == "c1" ~ "Received COVID-19 vaccine between X and X",
-        crit == "c2" ~ "  with no prior Covid-19 vaccine within 12 weeks",
-        crit == "c3" ~ "  with at least 1 prior COVID-19 vaccine dose",
-        crit == "c4_1" ~ "    no missing demographic information",
-        crit == "c4_2" ~ "    not a health and social care worker",
-        crit == "c4_3" ~ "    not end-of-life",
-        crit == "c4_4" ~ "    no documented COVID-19 infection/disease within prior 28 days",
-        crit == "c4_5" ~ "    not admitted in hospital at time of booster",
-        crit == "c4" ~ "  included in matching run",
+        crit == "c2" ~ "  with influenza vaccine on the same day",
+        crit == "c3" ~ "  with no prior Covid-19 vaccine within 12 weeks",
+        crit == "c4" ~ "  with at least 1 prior COVID-19 vaccine dose",
+        crit == "c5_1" ~ "    no missing demographic information",
+        crit == "c5_2" ~ "    not a health and social care worker",
+        crit == "c5_3" ~ "    not end-of-life",
+        crit == "c5_4" ~ "    no documented COVID-19 infection/disease within prior 28 days",
+        crit == "c5_5" ~ "    not admitted in hospital at time of booster",
+        crit == "c5" ~ "  included in matching run",
         TRUE ~ "NA_character_boop" # should not appear
       )
     )
