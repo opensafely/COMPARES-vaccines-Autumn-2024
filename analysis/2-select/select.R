@@ -120,11 +120,10 @@ data_criteria <-
     # isnot_housebound = !housebound,
     # has_norecentcovid = ((vax_date - anycovid_0_date) >= 28) | is.na(anycovid_0_date),
     isnot_inhospital = !inhospital,
-    
-    include = (
+
+    include_regardless_of_flu_coadmin = (
       prior_vax_interval_atleast12weeks &
         vax_product_of_interest &
-        codamin_flu &
         # no_prior_productA &
         # no_prior_productB &
         prior_vax_1plus &
@@ -138,23 +137,24 @@ data_criteria <-
         # has_norecentcovid &
         isnot_inhospital
     ),
-    
-    include_before_flu = (
-      prior_vax_interval_atleast12weeks &
-        vax_product_of_interest &
-        prior_vax_1plus &
-        has_age &
-        has_sex &
-        has_imd &
-        has_region &
-        isnot_inhospital
-    )
+
+    include_analysis =
+      if (flu_selection_mode == "flu_coadmin_only") {
+        include_regardless_of_flu_coadmin & codamin_flu
+      } else if (flu_selection_mode == "no_flu_coadmin_restriction") {
+        include_regardless_of_flu_coadmin
+      } else {
+        stop(
+          "flu_selection_mode must be 'flu_coadmin_only' or ",
+          "'no_flu_coadmin_restriction'"
+        )
+      }
   )
 
 
 data_cohort <- 
   data_criteria |>
-  filter(include) |>
+  filter(include_analysis) |>
   select(patient_id) |>
   left_join(data_prepared, by="patient_id") |>
   droplevels()
@@ -192,7 +192,18 @@ data_inclusioncriteria <- data_criteria |>
     vax_product,
     c0 = TRUE,
     c1 = c0 & vax_product_of_interest,
-    c2 = c1 & codamin_flu,
+    # Apply the same-day influenza coadministration criterion only when
+    # flu_selection_mode is set to "flu_coadmin_only".
+    c2 = if (flu_selection_mode == "flu_coadmin_only") {
+      c1 & codamin_flu
+    } else if (flu_selection_mode == "no_flu_coadmin_restriction") {
+      c1
+    } else {
+      stop(
+        "flu_selection_mode must be 'flu_coadmin_only' or ",
+        "'no_flu_coadmin_restriction'"
+      )
+    },
     c3 = c2 & prior_vax_interval_atleast12weeks, #& no_prior_productA & no_prior_productB,
     c4 = c3 & prior_vax_1plus,
     c5_1 = c4 & (has_age & has_sex & has_imd & has_region)
@@ -225,6 +236,15 @@ create_flowchart <- function(round_level = 1){
       names_to="criteria",
       values_to="n"
     ) |>
+    # When influenza coadministration is not an inclusion criterion,
+    # omit c2 from the flowchart rather than showing a redundant step.
+    filter(
+      !(
+        flu_selection_mode == "no_flu_coadmin_restriction" &
+          criteria == "c2"
+      )
+    ) |>
+    
     mutate(
       level = if_else(str_detect(criteria, "c\\d+$"), 1, 2),
       n_level1 = if_else(level==1, n, NA_real_),
@@ -299,7 +319,7 @@ remove(data_inclusioncriteria)
 # Create a long table with one row per patient and flu vaccination timing window
 flu_coadmin_days <-
   data_criteria |>
-  filter(include_before_flu) |>
+  filter(include_regardless_of_flu_coadmin) |>
   select(patient_id) |>
   left_join(
     data_prepared |>
@@ -378,7 +398,7 @@ ggsave(filename = fs::path(output_dir, glue("flu_coadmin_days_plot.png")),
 
 flu_coadmin_subgroups <-
   data_criteria |>
-  filter(include_before_flu) |>
+  filter(include_regardless_of_flu_coadmin) |>
   select(patient_id) |>
   left_join(
     data_prepared |>
