@@ -105,6 +105,7 @@ data_criteria <-
     prior_vax_interval_atleast12weeks,
     vax_product_of_interest = vax_product %in% c(productA, productB),
     codamin_flu = !is.na(flu_vaccine_same_date),
+    select_coadmin_only_if_required = !(restrict_to_coadmin_flu & !codamin_flu), #if restrict_to_coadmin_flu==TRUE and codamin_flu==FALSE then 0, otherwise 1
     # no_prior_productA = !vaxhist_productA,
     # no_prior_productB = !vaxhist_productB,
     prior_vax_1plus = prior_vax_count >= 1,
@@ -137,24 +138,15 @@ data_criteria <-
         # has_norecentcovid &
         isnot_inhospital
     ),
+    
+    include = include_regardless_of_flu_coadmin & select_coadmin_only_if_required
 
-    include_analysis =
-      if (flu_selection_mode == "flu_coadmin_only") {
-        include_regardless_of_flu_coadmin & codamin_flu
-      } else if (flu_selection_mode == "no_flu_coadmin_restriction") {
-        include_regardless_of_flu_coadmin
-      } else {
-        stop(
-          "flu_selection_mode must be 'flu_coadmin_only' or ",
-          "'no_flu_coadmin_restriction'"
-        )
-      }
   )
 
 
 data_cohort <- 
   data_criteria |>
-  filter(include_analysis) |>
+  filter(include) |>
   select(patient_id) |>
   left_join(data_prepared, by="patient_id") |>
   droplevels()
@@ -193,17 +185,7 @@ data_inclusioncriteria <- data_criteria |>
     c0 = TRUE,
     c1 = c0 & vax_product_of_interest,
     # Apply the same-day influenza coadministration criterion only when
-    # flu_selection_mode is set to "flu_coadmin_only".
-    c2 = if (flu_selection_mode == "flu_coadmin_only") {
-      c1 & codamin_flu
-    } else if (flu_selection_mode == "no_flu_coadmin_restriction") {
-      c1
-    } else {
-      stop(
-        "flu_selection_mode must be 'flu_coadmin_only' or ",
-        "'no_flu_coadmin_restriction'"
-      )
-    },
+    c2 = c1 & select_coadmin_only_if_required,
     c3 = c2 & prior_vax_interval_atleast12weeks, #& no_prior_productA & no_prior_productB,
     c4 = c3 & prior_vax_1plus,
     c5_1 = c4 & (has_age & has_sex & has_imd & has_region)
@@ -212,9 +194,6 @@ data_inclusioncriteria <- data_criteria |>
     # c4_5 = c3 & (isnot_inhospital),
     #c4 = c4_1 & c4_2 & c4_3 & c4_4 & c4_5
   ) 
-
-# remove large in-memory objects
-# remove(data_criteria)
 
 write_feather(data_inclusioncriteria, sink = fs::path(output_dir, "data_inclusioncriteria.arrow"))
 
@@ -238,13 +217,7 @@ create_flowchart <- function(round_level = 1){
     ) |>
     # When influenza coadministration is not an inclusion criterion,
     # omit c2 from the flowchart rather than showing a redundant step.
-    filter(
-      !(
-        flu_selection_mode == "no_flu_coadmin_restriction" &
-          criteria == "c2"
-      )
-    ) |>
-    
+    filter(!(criteria == "c2" & !restrict_to_coadmin_flu)) |>
     mutate(
       level = if_else(str_detect(criteria, "c\\d+$"), 1, 2),
       n_level1 = if_else(level==1, n, NA_real_),

@@ -109,11 +109,11 @@ productB <- "moderna_JN1"
 
 # Analysis population definition with respect to influenza coadministration.
 # Options:
-# - "flu_coadmin_only": restrict the main analysis to individuals who received influenza vaccination on the same day as the COVID-19 vaccine.
-# - "no_flu_coadmin_restriction": include all eligible individuals regardless of influenza coadministration.
+# - TRUE: restrict the main analysis to individuals who received influenza vaccination on the same day as the COVID-19 vaccine.
+# - FALSE: include all eligible individuals regardless of influenza coadministration.
 #
 # Note: flu coadministration descriptive analyses are always performed among all eligible individuals (i.e. regardless of this setting).
-flu_selection_mode <- "no_flu_coadmin_restriction"
+restrict_to_coadmin_flu <- TRUE 
 
 
 # lookup to rename TPP product names to coding-friendly product names
