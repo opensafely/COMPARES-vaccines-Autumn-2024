@@ -299,8 +299,7 @@ actions_contrasts <- function(cohort, estimator) {
 
 ## defaults ----
 defaults_list <- lst(
-  version = "5.0",
-  expectations = lst(population_size = 1000L)
+  version = "5.0"
 )
 
 ## actions ----
@@ -469,3 +468,4 @@ if (Sys.getenv("OPENSAFELY_BACKEND") %in% c("expectations", "tpp")) {
 } else {
   stop("Backend not recognised")
 }
+
