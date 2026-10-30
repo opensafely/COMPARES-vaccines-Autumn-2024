@@ -61,8 +61,20 @@ data_prepared <- read_feather(here("output", "2-select", "data_prepared.arrow"))
 ## unrounded totals
 total_n_unrounded <-
   bind_rows(
-    tibble(vax_product="any", n=nrow(data_prepared)),
-    count(data_prepared |> mutate(boost_type=fct_other(vax_product, keep=treatment_lookup$treatment, other_level="other")), vax_product, .drop=FALSE)
+    tibble(
+      vax_product="any", 
+      n=nrow(data_prepared)
+      ),
+    count(
+      data_prepared |> 
+        mutate(
+          boost_type=fct_other(
+            vax_product, 
+            keep=treatment_lookup$treatment, 
+            other_level="other")
+          ), 
+      vax_product, 
+      .drop=FALSE)
   ) |>
   mutate(
     pct = n/first(n)
@@ -90,34 +102,47 @@ data_criteria <-
     patient_id,
     vax_date,
     vax_product,
+    prior_vax_interval_atleast12weeks,
+    vax_product_of_interest = vax_product %in% c(productA, productB),
+    codamin_flu = !is.na(flu_vaccine_same_date),
+    select_coadmin_only_if_required = !(restrict_to_coadmin_flu & !codamin_flu), #if restrict_to_coadmin_flu==TRUE and codamin_flu==FALSE then 0, otherwise 1
+    # no_prior_productA = !vaxhist_productA,
+    # no_prior_productB = !vaxhist_productB,
+    prior_vax_1plus = prior_vax_count >= 1,
     has_age = !is.na(age_eligible),
     has_sex = !is.na(sex) & !(sex %in% c("intersex", "unknown")),
     has_imd = !is.na(imd_Q5),
-    has_ethnicity5 = !is.na(ethnicity5),
     has_region = !is.na(region),
-    #has_msoa = !is.na(msoa),
-    #isnot_hscworker = !hscworker,
-    #isnot_carehomeresident = !care_home_combined,
-    #isnot_endoflife = !endoflife,
-    #isnot_housebound = !housebound,
-    #no_prior_productA = !vaxhist_productA,
-    #no_prior_productB = !vaxhist_productB,
-    prior_vax_interval_atleast12weeks,
-    vax_product_of_interest = vax_product %in% c(productA, productB),
-    prior_vax_1plus = (prior_vax_count >= 1),
-    #has_norecentcovid = ((vax_date - anycovid_0_date) >= 28) | is.na(anycovid_0_date),
+    # has_ethnicity5 = !is.na(ethnicity5),
+    # has_msoa = !is.na(msoa),
+    # isnot_hscworker = !hscworker,
+    # isnot_carehomeresident = !care_home_combined,
+    # isnot_endoflife = !endoflife,
+    # isnot_housebound = !housebound,
+    # has_norecentcovid = ((vax_date - anycovid_0_date) >= 28) | is.na(anycovid_0_date),
     isnot_inhospital = !inhospital,
-    
-    include = (
-      prior_vax_interval_atleast12weeks & vax_product_of_interest & #no_prior_productA & no_prior_productB &
+
+    include_regardless_of_flu_coadmin = (
+      prior_vax_interval_atleast12weeks &
+        vax_product_of_interest &
+        # no_prior_productA &
+        # no_prior_productB &
         prior_vax_1plus &
-        has_age & has_sex & has_imd & has_region & #has_ethnicity &
-        #isnot_hscworker &
-        #isnot_endoflife &
-        #has_norecentcovid &
+        has_age &
+        has_sex &
+        has_imd &
+        has_region &
+        # has_ethnicity5 &
+        # isnot_hscworker &
+        # isnot_endoflife &
+        # has_norecentcovid &
         isnot_inhospital
     ),
+    
+    include = include_regardless_of_flu_coadmin & select_coadmin_only_if_required
+
   )
+
 
 data_cohort <- 
   data_criteria |>
@@ -147,6 +172,7 @@ table_cohort <-
 
 write_csv(table_cohort, fs::path(output_dir, "table_cohort.csv"))
 
+remove(data_cohort)
 
 ## output simple dataset containing exclusions criteria met ----
 
@@ -158,17 +184,16 @@ data_inclusioncriteria <- data_criteria |>
     vax_product,
     c0 = TRUE,
     c1 = c0 & vax_product_of_interest,
-    c2 = c1 & prior_vax_interval_atleast12weeks, #& no_prior_productA & no_prior_productB,
-    c3 = c2 & prior_vax_1plus,
-    c4_1 = c3 & (has_age & has_sex & has_imd & has_region),
+    # Apply the same-day influenza coadministration criterion only when
+    c2 = c1 & select_coadmin_only_if_required,
+    c3 = c2 & prior_vax_interval_atleast12weeks, #& no_prior_productA & no_prior_productB,
+    c4 = c3 & prior_vax_1plus,
+    c5_1 = c4 & (has_age & has_sex & has_imd & has_region)
     # c4_3 = c3 & (isnot_endoflife),
     # c4_4 = c3 & (has_norecentcovid),
     # c4_5 = c3 & (isnot_inhospital),
     #c4 = c4_1 & c4_2 & c4_3 & c4_4 & c4_5
   ) 
-
-# remove large in-memory objects
-remove(data_criteria)
 
 write_feather(data_inclusioncriteria, sink = fs::path(output_dir, "data_inclusioncriteria.arrow"))
 
@@ -183,13 +208,16 @@ create_flowchart <- function(round_level = 1){
     filter(c1) |>
     group_by(vax_product) |>
     summarise(
-      across(.cols=everything(), .fns=~ceiling_any(sum(.), round_level))
+      across(.cols=everything(), .fns=~ceiling_any(sum(., na.rm = TRUE), round_level))
     ) |>
     pivot_longer(
       cols=-c(vax_product),
       names_to="criteria",
       values_to="n"
     ) |>
+    # When influenza coadministration is not an inclusion criterion,
+    # omit c2 from the flowchart rather than showing a redundant step.
+    filter(!(criteria == "c2" & !restrict_to_coadmin_flu)) |>
     mutate(
       level = if_else(str_detect(criteria, "c\\d+$"), 1, 2),
       n_level1 = if_else(level==1, n, NA_real_),
@@ -206,14 +234,15 @@ create_flowchart <- function(round_level = 1){
       crit = criteria,
       criteria = fct_case_when(
         crit == "c1" ~ "Received COVID-19 vaccine between X and X",
-        crit == "c2" ~ "  with no prior Covid-19 vaccine within 12 weeks",
-        crit == "c3" ~ "  with at least 1 prior COVID-19 vaccine dose",
-        crit == "c4_1" ~ "    no missing demographic information",
-        crit == "c4_2" ~ "    not a health and social care worker",
-        crit == "c4_3" ~ "    not end-of-life",
-        crit == "c4_4" ~ "    no documented COVID-19 infection/disease within prior 28 days",
-        crit == "c4_5" ~ "    not admitted in hospital at time of booster",
-        crit == "c4" ~ "  included in matching run",
+        crit == "c2" ~ "  with influenza vaccine on the same day",
+        crit == "c3" ~ "  with no prior Covid-19 vaccine within 12 weeks",
+        crit == "c4" ~ "  with at least 1 prior COVID-19 vaccine dose",
+        crit == "c5_1" ~ "    no missing demographic information",
+        crit == "c5_2" ~ "    not a health and social care worker",
+        crit == "c5_3" ~ "    not end-of-life",
+        crit == "c5_4" ~ "    no documented COVID-19 infection/disease within prior 28 days",
+        crit == "c5_5" ~ "    not admitted in hospital at time of booster",
+        crit == "c5" ~ "  included in matching run",
         TRUE ~ "NA_character_boop" # should not appear
       )
     )
@@ -262,13 +291,19 @@ remove(data_inclusioncriteria)
 
 # Create a long table with one row per patient and flu vaccination timing window
 flu_coadmin_days <-
-  data_cohort |>
-  select(
-    patient_id,
-    vax_product,
-    flu_vaccine_before_30_days,
-    flu_vaccine_same_day_days,
-    flu_vaccine_after_30_days
+  data_criteria |>
+  filter(include_regardless_of_flu_coadmin) |>
+  select(patient_id) |>
+  left_join(
+    data_prepared |>
+      select(
+        patient_id,
+        vax_product,
+        flu_vaccine_before_30_days,
+        flu_vaccine_same_day_days,
+        flu_vaccine_after_30_days
+       ),
+    by = "patient_id"
   ) |>
   pivot_longer(
     cols = starts_with("flu_vaccine_"),
@@ -334,17 +369,24 @@ ggsave(filename = fs::path(output_dir, glue("flu_coadmin_days_plot.png")),
 #   - 7_days
 #   - no_covax
 
-flu_coadmin_subgroups <- data_cohort |>
-  select(
-    patient_id,
-    ethnicity5,
-    ethnicity16,
-    sex,
-    ageband,
-    imd_Q5,
-    vax_product,
-    flu_coadmin_7_day,
-    flu_coadmin_same_day
+flu_coadmin_subgroups <-
+  data_criteria |>
+  filter(include_regardless_of_flu_coadmin) |>
+  select(patient_id) |>
+  left_join(
+    data_prepared |>
+      select(
+        patient_id,
+        ethnicity5,
+        ethnicity16,
+        sex,
+        ageband,
+        imd_Q5,
+        vax_product,
+        flu_coadmin_7_day,
+        flu_coadmin_same_day
+      ),
+    by = "patient_id"
   ) |>
   mutate(
     flu_coadmin = case_when(
@@ -418,12 +460,11 @@ flu_coadmin_subgroups_table <-
 write_csv(flu_coadmin_subgroups_table, fs::path(output_dir, "flu_coadmin_subgroups_table.csv"))
 # Plot the percentage of patients in each flu coadministration category,
 # by subgroup category and vaccine product.
- 
 flu_coadmin_subgroups_plot <- ggplot(flu_coadmin_subgroups_table, aes(
-    x = pct_roundmid6,
-    y = category,
-    colour = flu_coadmin
-  )) +
+  x = pct_roundmid6,
+  y = category,
+  colour = flu_coadmin
+)) +
   geom_point(size = 2) +
   facet_grid(
     rows = vars(group),

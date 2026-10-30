@@ -107,6 +107,15 @@ max_prior_vax_count <- 10L
 productA <- "pfizer_JN1"
 productB <- "moderna_JN1"
 
+# Analysis population definition with respect to influenza coadministration.
+# Options:
+# - TRUE: restrict the main analysis to individuals who received influenza vaccination on the same day as the COVID-19 vaccine.
+# - FALSE: include all eligible individuals regardless of influenza coadministration.
+#
+# Note: flu coadministration descriptive analyses are always performed among all eligible individuals (i.e. regardless of this setting).
+restrict_to_coadmin_flu <- TRUE 
+
+
 # lookup to rename TPP product names to coding-friendly product names
 vax_product_lookup <- c(
   # Pfizer adult
