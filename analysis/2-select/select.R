@@ -96,7 +96,7 @@ write_csv(total_n_rounded, fs::path(output_dir, "total_allcohorts_rounded.csv"))
 vax_date_limits <-
   data_prepared |>
   summarise(
-    min =vax_date(vax_date),
+    min = min(vax_date),
     max = max(vax_date),
     .by = vax_product
   )
