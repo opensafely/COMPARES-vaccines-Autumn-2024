@@ -96,13 +96,27 @@ write_csv(total_n_rounded, fs::path(output_dir, "total_allcohorts_rounded.csv"))
 vax_date_limits <-
   data_prepared |>
   summarise(
-    min = min(vax_date),
-    max = max(vax_date),
+    min_date = min(vax_date),
+    max_date = max(vax_date),
+    min_day = min(vax_day),
+    max_day = max(vax_day),
     .by = vax_product
   )
 
-both_products_used_from_date <- max(vax_date_limits$min)
-both_products_used_to_date <- min(vax_date_limits$max)
+both_products_used_from_date <- max(vax_date_limits$min_date)
+both_products_used_to_date <- min(vax_date_limits$max_date)
+both_products_used_from_day <- max(vax_date_limits$min_day)
+both_products_used_to_day <- min(vax_date_limits$max_day)
+
+stopifnot(
+  "all vax_day are non null" = (!is.na(both_products_used_from_day) &
+    !is.na(both_products_used_to_day))
+)
+
+cat("from date: ", both_products_used_from_date, "\n")
+cat("to date: ", both_products_used_to_date, "\n")
+cat("from day: ", both_products_used_from_day, "\n")
+cat("to day: ", both_products_used_to_day, "\n")
 
 
 ## Define selection criteria ----
@@ -116,9 +130,9 @@ data_criteria <-
     prior_vax_interval_atleast12weeks,
     vax_product_of_interest = vax_product %in% c(productA, productB),
     during_period_both_products_used = between(
-      vax_date,
-      both_products_used_from_date,
-      both_products_used_to_date
+      vax_day,
+      both_products_used_from_day,
+      both_products_used_to_day
     ),
     codamin_flu = !is.na(flu_vaccine_same_date),
     select_coadmin_only_if_required = !(restrict_to_coadmin_flu & !codamin_flu), #if restrict_to_coadmin_flu==TRUE and codamin_flu==FALSE then 0, otherwise 1
@@ -169,7 +183,7 @@ data_cohort <-
 write_feather(data_cohort, fs::path(output_dir, "data_cohort.arrow"))
 
 
-## report unadjusted balance for baseline variables between levels  of treatment ----
+## report unadjusted balance for baseline variables between levels of treatment ----
 # This output includes SDC
 
 table_cohort <-
