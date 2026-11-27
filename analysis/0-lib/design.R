@@ -26,8 +26,8 @@ fs::dir_create(here("analysis", "0-lib"))
 # The dates are defined in json format so they can be read in by R and python scripts
 # json has no easy way to comment, so explanation for dates is here:
 # - firstpossibleax_date is the date from which we want to identify covid vaccines. the mass vax programme was 8 Dec 2020 but other people were vaccinated earlier in trials, so want to pick these people up too (and possibly exclude them)
-# - start_date is when we start the observation period, typically at the start of the vaccination campaign (we may restrict the analysis to those vaccinated at a later date if only one product wasavailable at the start)
-# - end_date is when we stop the observation period. Most likely the day before the start of the next campaign.
+# - start_date is when we start the observation period, typically at the start of the vaccination campaign (we may restrict the analysis to those vaccinated at a later date if only one product was available at the start)
+# - end_date is when we stop the observation period. It could be the the day before the start of the next campaign. Or earlier than this if only one, or no, products were being used after a certain date
 
 study_dates <-
   jsonlite::read_json(path = here("analysis", "0-lib", "study-dates.json")) |>
@@ -42,6 +42,9 @@ list2env(study_dates, globalenv())
 
 # maximum follow-up duration, in days
 # currently up to 24 weeks after time-zero
+# the primary time-horizon may be chosen earlier than this 
+# # as by 24 weeks some people vaccinated later in the campaign
+# may already have been vaccinated as part of the next campaign
 maxfup <- 7L * 24L
 
 # where to split follow-up time after recruitment
