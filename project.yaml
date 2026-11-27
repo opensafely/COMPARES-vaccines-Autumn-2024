@@ -17,7 +17,7 @@ actions:
   extract:
     run: ehrql:v1 generate-dataset analysis/1-extract/dataset_definition.py --output
       output/1-extract/extract.arrow --dummy-data-file analysis/1-extract/dummy_extract.arrow
-      -- --studystart_date=2024-09-30 --studyend_date=2025-02-28
+      -- --studystart_date=2024-09-30 --studyend_date=2024-12-01
     needs: []
     outputs:
       highly_sensitive:
